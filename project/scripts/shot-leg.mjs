@@ -1,0 +1,26 @@
+import { chromium } from 'playwright'
+const browser = await chromium.launch()
+const page = await browser.newPage({ viewport: { width: 1440, height: 900 } })
+await page.goto('http://127.0.0.1:5183/#/', { waitUntil: 'networkidle' })
+await page.evaluate(() => localStorage.clear())
+await page.reload({ waitUntil: 'networkidle' })
+await page.waitForTimeout(700)
+await page.evaluate(() => { location.hash = '#/trip/demo-dali-lijiang' })
+await page.waitForTimeout(1100)
+// 切到 Day4
+const tabs = page.locator('button.min-w-\\[54px\\]')
+await tabs.nth(3).click()
+await page.waitForTimeout(500)
+await page.screenshot({ path: 'shots/leg-01-day4.png' })
+// 打开时间轴
+await page.locator('button:has-text("时间轴")').first().click()
+await page.waitForTimeout(500)
+await page.screenshot({ path: 'shots/leg-02-timeline.png' })
+// 全览地图
+await page.keyboard.press('Escape')
+await page.waitForTimeout(300)
+await page.locator('button:has-text("全程全览")').first().click()
+await page.waitForTimeout(600)
+await page.screenshot({ path: 'shots/leg-03-allmap.png' })
+await browser.close()
+console.log('shots saved')
