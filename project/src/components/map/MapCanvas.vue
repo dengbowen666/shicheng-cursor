@@ -45,6 +45,7 @@ const emit = defineEmits<{
   (e: 'select-segment', id: string): void
   (e: 'select-leg', id: string): void
   (e: 'map-click', location: LngLat): void
+  (e: 'base-poi', info: { name: string; location: LngLat }): void
   (e: 'add-stroke', points: LngLat[]): void
 }>()
 
@@ -170,13 +171,15 @@ watch(() => [props.dayIndex, props.viewMode, props.city], () => {
   camCenter.value = null
   focusedPoiId.value = null
   glView.value = null
+  // 真实底图：切天/切城后重投影到新视野（原生模式下 bounds watch 不再自动同步）
+  if (nativeDrag.value) baseMapRef.value?.refit()
 })
 
 const glView = ref<MapBounds | null>(null)
 const stageEl = ref<HTMLDivElement | null>(null)
 
 /** 底图比视口大一圈，CSS 拖拽/缩小先吃缓冲瓦片，再提交经纬度 */
-const VIEW_PAD = 0.55
+const VIEW_PAD = 0.3
 const VIEW_FACTOR = 1 + VIEW_PAD * 2
 const LIVE_SCALE_MIN = 1 / VIEW_FACTOR + 0.04
 const worldBounds = computed(() => expandBounds(bounds.value, VIEW_FACTOR))
@@ -193,6 +196,9 @@ let liveTx = 0
 let liveTy = 0
 let liveS = 1
 let commitTimer = 0
+let liveRaf = 0
+const isLivePan = ref(false)
+let liveInteracting = false
 let panStart: { x: number; y: number; tx: number; ty: number } | null = null
 let panned = false
 const pointers = new Map<number, { x: number; y: number }>()
@@ -206,6 +212,15 @@ function applyLive() {
   const el = stageEl.value
   if (!el) return
   el.style.transform = `translate3d(${liveTx}px, ${liveTy}px, 0) scale(${liveS})`
+}
+
+/** 高频 pointermove 合并到一帧一次，避免把主线程压在样式写入上 */
+function applyLiveSoon() {
+  if (liveRaf) return
+  liveRaf = window.requestAnimationFrame(() => {
+    liveRaf = 0
+    applyLive()
+  })
 }
 
 function clampLiveScale(next: number) {
@@ -226,6 +241,7 @@ function zoomToward(cx: number, cy: number, next: number, w: number, h: number) 
 
 function commitLive() {
   window.clearTimeout(commitTimer)
+  if (liveRaf) { window.cancelAnimationFrame(liveRaf); liveRaf = 0 }
   if (liveTx === 0 && liveTy === 0 && Math.abs(liveS - 1) < 1e-4) return
   const el = rootEl.value
   if (!el) return
@@ -248,7 +264,13 @@ function scheduleCommit(ms = 90) {
   commitTimer = window.setTimeout(commitLive, ms)
 }
 
+const baseMapRef = ref<InstanceType<typeof TencentBaseMap> | null>(null)
+
 function zoomBy(factor: number) {
+  if (nativeDrag.value && baseMapRef.value) {
+    baseMapRef.value.zoomBy(factor)
+    return
+  }
   const el = rootEl.value
   if (!el) return
   const next = clampLiveScale(liveS * factor)
@@ -259,6 +281,7 @@ function zoomBy(factor: number) {
 }
 function resetCam() {
   stopFocusAnim()
+  if (liveRaf) { window.cancelAnimationFrame(liveRaf); liveRaf = 0 }
   liveTx = 0
   liveTy = 0
   liveS = 1
@@ -267,6 +290,7 @@ function resetCam() {
   camCenter.value = null
   focusedPoiId.value = null
   focusRing.value = 0
+  if (nativeDrag.value && baseMapRef.value) baseMapRef.value.refit()
 }
 
 /** 日程/时间轴点地点 → 地图平滑移到该处并放大；供父组件通过 ref 调用 */
@@ -280,15 +304,23 @@ const easeInOut = (t: number) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t 
 function focusOn(location: LngLat, poiId: string | null = null, targetScale = 2.6, ms = 620) {
   stopFocusAnim()
   clearTimeout(commitTimer)
+  if (liveRaf) { window.cancelAnimationFrame(liveRaf); liveRaf = 0 }
   liveTx = 0; liveTy = 0; liveS = 1
   applyLive()
+  focusedPoiId.value = poiId
+  focusRing.value = Date.now()
+  if (nativeDrag.value && baseMapRef.value) {
+    // 真实底图：直接驱动 GL 中心+缩放，逐帧回传视野让印章跟随
+    baseMapRef.value.focusOn(location, Math.log2(Math.max(1, targetScale)), ms)
+    const ringAt = focusRing.value
+    window.setTimeout(() => { if (focusRing.value === ringAt) focusRing.value = 0 }, 1200)
+    return
+  }
   const fromC = camCenter.value || { lng: (fitted.value.minLng + fitted.value.maxLng) / 2, lat: (fitted.value.minLat + fitted.value.maxLat) / 2 }
   const fromS = camScale.value
   const toC = location
   const toS = Math.max(1, Math.min(8, targetScale))
   const start = performance.now()
-  focusedPoiId.value = poiId
-  focusRing.value = Date.now()
   const step = (now: number) => {
     const p = easeInOut(Math.min(1, (now - start) / ms))
     camCenter.value = { lng: fromC.lng + (toC.lng - fromC.lng) * p, lat: fromC.lat + (toC.lat - fromC.lat) * p }
@@ -304,7 +336,11 @@ function focusOn(location: LngLat, poiId: string | null = null, targetScale = 2.
 }
 function focusPoi(poi: POI) { focusOn(poi.location, poi.id) }
 
+/** 真实底图且已就绪时，拖拽/缩放完全交还腾讯 GL；水墨底图仍走 CSS transform 模拟 */
+const nativeDrag = computed(() => useRealBase.value && glReady.value && !props.annotateMode)
+
 function onWheel(e: WheelEvent) {
+  if (nativeDrag.value) return // GL 自己处理滚轮，preventDefault 会掐掉原生缩放
   e.preventDefault()
   stopFocusAnim()
   const el = rootEl.value
@@ -316,20 +352,26 @@ function onWheel(e: WheelEvent) {
   const next = clampLiveScale(liveS * factor)
   if (Math.abs(next - liveS) < 1e-4) return
   zoomToward(cx, cy, next, el.clientWidth, el.clientHeight)
-  applyLive()
+  applyLiveSoon()
   scheduleCommit(e.deltaY > 0 ? 50 : 90)
 }
 
 function onMapPointerDown(e: PointerEvent) {
-  stopFocusAnim()
   const interactive = (e.target as Element | null)?.closest?.('[data-map-interactive]')
   if (interactive) {
     panned = false
     panStart = null
     return
   }
+  // 真实底图：绝不 setPointerCapture——它会把 click 从底图 canvas 劫到根节点，
+  // 导致酒店/学校等原生 POI 点不动；拖拽交给 GL 原生处理。
+  if (nativeDrag.value) return
+  stopFocusAnim()
   longPress.onPointerDown(e)
   if (props.annotateMode) return
+  window.clearTimeout(commitTimer)
+  liveInteracting = true
+  isLivePan.value = true
   pointers.set(e.pointerId, { x: e.clientX, y: e.clientY })
   panned = false
   try { rootEl.value?.setPointerCapture(e.pointerId) } catch { /* ignore */ }
@@ -348,6 +390,7 @@ function onMapPointerDown(e: PointerEvent) {
 }
 
 function onMapPointerMove(e: PointerEvent) {
+  if (nativeDrag.value) return
   longPress.onPointerMove(e)
   if (props.annotateMode) return
   if (pointers.has(e.pointerId)) pointers.set(e.pointerId, { x: e.clientX, y: e.clientY })
@@ -361,7 +404,7 @@ function onMapPointerMove(e: PointerEvent) {
     liveTy = pinchTy0
     const next = clampLiveScale(pinchLive0 * (dist / pinch0))
     zoomToward(pinchMid.x, pinchMid.y, next, el.clientWidth, el.clientHeight)
-    applyLive()
+    applyLiveSoon()
     panned = true
     return
   }
@@ -372,16 +415,21 @@ function onMapPointerMove(e: PointerEvent) {
   panned = true
   liveTx = panStart.tx + dx
   liveTy = panStart.ty + dy
-  applyLive()
+  applyLiveSoon()
 }
 
 function onMapPointerUp(e: PointerEvent) {
+  if (nativeDrag.value) return
   longPress.onPointerUp()
   pointers.delete(e.pointerId)
   panStart = null
   if (pointers.size < 2) pinch0 = 0
   try { rootEl.value?.releasePointerCapture(e.pointerId) } catch { /* ignore */ }
   if (panned) commitLive()
+  if (pointers.size === 0) {
+    liveInteracting = false
+    isLivePan.value = false
+  }
 }
 
 onMounted(() => {
@@ -399,6 +447,7 @@ onBeforeUnmount(() => {
   window.removeEventListener('resize', measure)
   rootEl.value?.removeEventListener('wheel', onWheel)
   window.clearTimeout(commitTimer)
+  if (liveRaf) window.cancelAnimationFrame(liveRaf)
   stopFocusAnim()
 })
 
@@ -514,7 +563,16 @@ function pickRec(id: string) {
   const poi = recs.value.find(p => p.id === id)
   if (poi) emit('pick-poi', poi)
 }
-function onGlView(b: MapBounds) { glView.value = b }
+function onGlView(b: MapBounds) {
+  // 原生拖拽下 view 是真值，必须逐帧接受才能跟上；水墨模拟拖拽时才屏蔽半路重投影
+  if (nativeDrag.value || !liveInteracting) glView.value = b
+}
+function onGlInteracting(active: boolean) { isLivePan.value = active }
+/** 真实底图自带地点：只在前台没有拖动/长按时抬起详情，由用户自己决定后续动作 */
+function onBaseMapPoi(info: { name: string; location: LngLat }) {
+  if (panned || longPress.didFire()) return
+  emit('base-poi', info)
+}
 function selectSegment(id: string) { emit('select-segment', id) }
 function selectLeg(id: string) { emit('select-leg', id) }
 
@@ -529,7 +587,7 @@ defineExpose({ undoAnnotation, clearAnnotations, loadPersisted, focusOn, focusPo
   <div
     ref="rootEl"
     class="map-cursor w-full h-full overflow-hidden bg-paper touch-none"
-    :class="annotateMode ? 'is-annotate' : ''"
+    :class="[annotateMode ? 'is-annotate' : '', isLivePan ? 'is-live-pan' : '']"
     @click="onClick"
     @pointerdown="onMapPointerDown"
     @pointermove="onMapPointerMove"
@@ -551,23 +609,27 @@ defineExpose({ undoAnnotation, clearAnnotations, loadPersisted, focusOn, focusPo
 
     <TencentBaseMap
       v-if="useRealBase"
+      ref="baseMapRef"
       :key="`${mapKey}-${standardBase ? 'std' : 'ink'}`"
-      class="pointer-events-none absolute inset-0 z-[1]"
-      :class="glReady ? 'opacity-100' : 'opacity-0'"
+      class="absolute inset-0 z-[1]"
+      :class="[glReady ? 'opacity-100' : 'opacity-0', glReady && !annotateMode ? 'pointer-events-auto' : 'pointer-events-none']"
       :map-key="mapKey"
       :bounds="worldBounds"
       :width="stageSize.w"
       :height="stageSize.h"
       :standard="standardBase"
+      :interactive="!annotateMode"
       @ready="glReady = true"
       @fail="onGlFail"
       @view="onGlView"
+      @interacting="onGlInteracting"
+      @pick-poi="onBaseMapPoi"
     />
 
     <RouteLayer
       class="absolute inset-0 z-[2]"
       :segments="visibleSegments" :pois="trip.pois" :bounds="overlayBounds"
-      :width="stageSize.w" :height="stageSize.h" :k="k"
+      :width="stageSize.w" :height="stageSize.h" :k="k" :playing="!isLivePan"
       @select-segment="selectSegment"
     />
 
@@ -662,6 +724,23 @@ defineExpose({ undoAnnotation, clearAnnotations, loadPersisted, focusOn, focusPo
 .map-stage-live {
   will-change: transform;
   backface-visibility: hidden;
+  contain: layout style;
+}
+/* 拖动瞬间卸掉昂贵滤镜/混合层，松手后再恢复纸韵，保证手势连续 */
+.map-cursor.is-live-pan :deep(.gl-paper),
+.map-cursor.is-live-pan :deep(.gl-wash),
+.map-cursor.is-live-pan :deep(.gl-mist),
+.map-cursor.is-live-pan :deep(.gl-ink-bleed),
+.map-cursor.is-live-pan :deep(.gl-grain) {
+  filter: none !important;
+  mix-blend-mode: normal !important;
+}
+.map-cursor.is-live-pan :deep(.gl-ink-bleed),
+.map-cursor.is-live-pan :deep(.gl-grain) {
+  display: none !important;
+}
+.map-cursor.is-live-pan :deep(.pin-pulse) {
+  animation: none !important;
 }
 .ink-ripple {
   width: 12px;

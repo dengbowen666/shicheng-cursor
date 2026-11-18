@@ -75,7 +75,7 @@ const markers = computed(() => {
       :key="m.poi.id"
       data-map-interactive
       pointer-events="auto"
-      class="cursor-pointer"
+      :class="['poi-marker', 'cursor-pointer', { 'is-selected': selectedId === m.poi.id }]"
       @pointerdown.stop
       @click.stop="emit('select', m.poi.id)"
     >
@@ -103,6 +103,7 @@ const markers = computed(() => {
 
         <text
           v-if="m.showLabel"
+          :class="ghost ? 'marker-label ghost-label' : 'marker-label'"
           :x="m.labelX" :y="(ghost ? -13 : -17) * k" :text-anchor="m.anchor"
           :font-size="(ghost ? 10 : 12.5) * k"
           :fill="selectedId === m.poi.id ? C.cinnabarDeep : C.ink"
@@ -113,3 +114,18 @@ const markers = computed(() => {
     </g>
   </svg>
 </template>
+
+<style scoped>
+/* 推荐地点平时只留方印，悬浮或选中才显名，地图不再被一整片字盖住 */
+.ghost-label {
+  opacity: 0;
+  transition: opacity 0.16s ease-out;
+}
+.poi-marker:hover .ghost-label,
+.poi-marker.is-selected .ghost-label {
+  opacity: 1;
+}
+@media (hover: none) {
+  .ghost-label { opacity: 0.85; }
+}
+</style>

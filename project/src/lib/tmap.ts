@@ -56,8 +56,9 @@ export function applyInkStyle(map: any, standard = false) {
       { featureType: 'building', elementType: 'geometry', stylers: { color: '#E6DCC9' } },
       { featureType: 'building', elementType: 'geometry.fill', stylers: { color: '#E6DCC9' } },
       { featureType: 'building', elementType: 'geometry.stroke', stylers: { color: '#D2C6B0' } },
-      { featureType: 'poi', elementType: 'labels', stylers: { visibility: 'off' } },
+      // 原生 POI 名字保留但压低对比：它们现在可点，不能藏起来
       { featureType: 'poi', elementType: 'labels.text.fill', stylers: { color: '#6E6A62' } },
+      { featureType: 'poi', elementType: 'labels.text.stroke', stylers: { color: '#F2ECE0' } },
       { featureType: 'green', elementType: 'geometry', stylers: { color: '#D5DED4' } },
       { featureType: 'landscape', elementType: 'geometry', stylers: { color: '#E6EADF' } },
       { featureType: 'administrative', elementType: 'labels.text.fill', stylers: { color: '#7A7468' } },

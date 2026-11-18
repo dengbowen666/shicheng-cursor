@@ -5,7 +5,7 @@ const page = await browser.newPage({ viewport: { width: 1440, height: 900 } })
 const logs = []
 function ok(name, cond, detail = '') { logs.push(`${cond ? 'PASS' : 'FAIL'} ${name}${detail ? ' :: ' + detail : ''}`) }
 
-await page.goto('http://127.0.0.1:5183/', { waitUntil: 'networkidle' })
+await page.goto(`http://127.0.0.1:${process.env.PORT || '5183'}/`, { waitUntil: 'networkidle' })
 await page.waitForTimeout(1200)
 
 // 找到印章组：带 title 的 g.cursor-pointer（城市印章）

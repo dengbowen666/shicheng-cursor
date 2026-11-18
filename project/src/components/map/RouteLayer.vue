@@ -30,6 +30,7 @@ const props = defineProps<{
   width: number
   height: number
   k: number
+  playing?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -155,7 +156,7 @@ function stations(g: Geom) {
       />
 
       <!-- 沿线运动图标 -->
-      <SegmentAnimator :points="g.pts" :mode="g.seg.mode" :k="k" />
+      <SegmentAnimator :points="g.pts" :mode="g.seg.mode" :k="k" :playing="playing !== false" />
 
       <!-- 时长牌「N′」 + 估小字 + 车次牌 -->
       <g

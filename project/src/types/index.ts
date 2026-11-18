@@ -5,7 +5,7 @@ export interface LngLat { lng: number; lat: number }
 
 export type POICategory = 'food' | 'hotel' | 'sight' | 'shop' | 'custom'
 export type PoiRole = 'stop' | 'base' // stop=途经点，base=驻地锚点（D29）
-export type PoiSource = 'api' | 'seed' | 'custom'
+export type PoiSource = 'api' | 'seed' | 'custom' | 'map'
 
 export interface POI {
   id: string

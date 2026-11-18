@@ -4,6 +4,7 @@
  * 加载失败 / 超时 / tiles 异常一律 emit fail，由上层露出水墨舆图。
  */
 import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import type { LngLat } from '../../types'
 import type { MapBounds } from '../../lib/projection'
 import { boundsFromCorners } from '../../lib/projection'
 import { applyInkStyle, loadTMap } from '../../lib/tmap'
@@ -14,9 +15,17 @@ const props = defineProps<{
   width: number
   height: number
   standard?: boolean
+  /** true=把拖拽/缩放交还腾讯 GL 原生（GPU 合成、跟手、松手无回弹）；水墨底图为 false */
+  interactive?: boolean
 }>()
 
-const emit = defineEmits<{ (e: 'fail'): void; (e: 'ready'): void; (e: 'view', b: MapBounds): void }>()
+const emit = defineEmits<{
+  (e: 'fail'): void
+  (e: 'ready'): void
+  (e: 'view', b: MapBounds): void
+  (e: 'interacting', active: boolean): void
+  (e: 'pick-poi', info: { name: string; location: LngLat }): void
+}>()
 
 const el = ref<HTMLDivElement | null>(null)
 let map: any = null
@@ -25,6 +34,55 @@ let timer: number | undefined
 let probeTimer: number | undefined
 let failTimer: number | undefined
 let markedReady = false
+let viewRaf = 0
+let focusRaf = 0
+
+/** pan/zoom 每帧最多回传一次视野，覆盖层据此实时重投影，跟手无延迟 */
+function publishViewSoon() {
+  if (viewRaf || dead) return
+  viewRaf = window.requestAnimationFrame(() => {
+    viewRaf = 0
+    publishView()
+  })
+}
+
+/** 供父级按钮调用：真实底图原生缩放 */
+function zoomBy(factor: number) {
+  if (!map || dead) return
+  cancelAnimationFrame(focusRaf)
+  const z = Math.max(3, Math.min(18, (map.getZoom?.() || 10) + Math.log2(factor)))
+  map.setZoom(z)
+  publishViewSoon()
+}
+
+/** 供父级重置：回到自适应视野 */
+function refit() { if (!dead) syncView(true) }
+
+/** 日程聚焦：动画移动 GL 中心+缩放，逐帧回传视野让印章跟随 */
+function focusOn(location: LngLat, zoomDelta = 1.3, ms = 580) {
+  if (!map || dead) return
+  cancelAnimationFrame(focusRaf)
+  const from = map.getCenter()
+  const z0 = map.getZoom?.() || 10
+  const z1 = Math.max(3, Math.min(18, z0 + zoomDelta))
+  const start = performance.now()
+  const ease = (t: number) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2)
+  const step = (now: number) => {
+    if (!map || dead) return
+    const p = Math.min(1, (now - start) / ms)
+    const e = ease(p)
+    map.setCenter(new window.TMap.LatLng(
+      from.getLat() + (location.lat - from.getLat()) * e,
+      from.getLng() + (location.lng - from.getLng()) * e,
+    ))
+    map.setZoom(z0 + (z1 - z0) * e)
+    publishViewSoon()
+    if (p < 1) focusRaf = window.requestAnimationFrame(step)
+  }
+  focusRaf = window.requestAnimationFrame(step)
+}
+
+defineExpose({ zoomBy, refit, focusOn })
 
 function targetZoom() {
   const spanLng = Math.max(1e-6, props.bounds.maxLng - props.bounds.minLng)
@@ -127,14 +185,15 @@ onMounted(async () => {
       rotation: 0,
       viewMode: '2D',
       showControl: false,
-      draggable: false,
-      scrollable: false,
-      doubleClickZoom: false,
-      touchZoomable: false,
+      // 真实底图交还 GL 原生交互：GPU 合成、跟手、有惯性，松手无 CSS transform 回弹
+      draggable: !!props.interactive,
+      scrollable: !!props.interactive,
+      doubleClickZoom: !!props.interactive,
+      touchZoomable: !!props.interactive,
       baseMap: {
         type: 'vector',
-        // 纸韵档关掉 point：腾讯地名与拾程印章叠在一起，点选会点到瓦片而不是行程点
-        features: props.standard ? ['base', 'road', 'building', 'point'] : ['base', 'road', 'building'],
+        // point 必须开着，原生 POI 才会进 click 事件的 evt.poi；纸韵档靠样式隐藏文字避免叠字
+        features: ['base', 'road', 'building', 'point'],
       },
     })
     applyInkStyle(map, !!props.standard)
@@ -143,6 +202,29 @@ onMounted(async () => {
       map.on('idle', () => { onTileSignal(); publishView() })
       map.on('tilesloaded', () => { onTileSignal(); publishView() })
       map.on('error', () => markFail())
+      if (props.interactive) {
+        // 拖拽/缩放过程中持续回传视野，覆盖层每帧跟上；起止态给上层暂停线路动画
+        map.on('pan', publishViewSoon)
+        map.on('zoom', publishViewSoon)
+        map.on('center_changed', publishViewSoon)
+        map.on('dragstart', () => emit('interacting', true))
+        map.on('panstart', () => emit('interacting', true))
+        map.on('dragend', () => { emit('interacting', false); publishView() })
+        map.on('panend', () => { emit('interacting', false); publishView() })
+        map.on('zoomend', () => publishView())
+      }
+      // 真实底图上的原生 POI：官方 click 事件会带 evt.poi（名称 + 坐标）。
+      // 只认 GL 的事件，不要额外 DOM click 兜底——否则空白处/拖拽尾也会弹卡。
+      map.on('click', (evt: any) => {
+        const poi = evt?.poi
+        if (!poi?.name) return
+        const ll = poi.latLng || evt?.latLng
+        if (!ll || typeof ll.getLng !== 'function') return
+        emit('pick-poi', {
+          name: String(poi.name),
+          location: { lng: ll.getLng(), lat: ll.getLat() },
+        })
+      })
       bound = true
     } catch { /* 老版本事件不全 */ }
 
@@ -176,11 +258,16 @@ onBeforeUnmount(() => {
   window.clearTimeout(timer)
   window.clearTimeout(probeTimer)
   window.clearTimeout(failTimer)
+  if (viewRaf) window.cancelAnimationFrame(viewRaf)
+  if (focusRaf) window.cancelAnimationFrame(focusRaf)
   try { map?.destroy?.() } catch { /* ignore */ }
   map = null
 })
 
-watch(() => [props.bounds.minLng, props.bounds.maxLng, props.bounds.minLat, props.bounds.maxLat], schedule)
+// 原生交互下别让父级 camCenter 的回写把地图拽回去：view 才是真值，只在非交互态同步 props.bounds
+watch(() => [props.bounds.minLng, props.bounds.maxLng, props.bounds.minLat, props.bounds.maxLat], () => {
+  if (!props.interactive) schedule()
+})
 watch(() => [props.width, props.height], () => {
   try { map?.resize?.() } catch { /* ignore */ }
   schedule()
@@ -188,7 +275,7 @@ watch(() => [props.width, props.height], () => {
 </script>
 
 <template>
-  <div class="tmap-inert pointer-events-none absolute inset-0 overflow-hidden">
+  <div class="absolute inset-0 overflow-hidden">
     <div ref="el" class="absolute inset-0" :class="standard ? '' : 'gl-paper'" />
     <template v-if="!standard">
       <div class="pointer-events-none absolute inset-0 gl-wash" />
@@ -198,10 +285,3 @@ watch(() => [props.width, props.height], () => {
     </template>
   </div>
 </template>
-
-<style scoped>
-.tmap-inert,
-.tmap-inert :deep(*) {
-  pointer-events: none !important;
-}
-</style>

@@ -131,6 +131,51 @@ function onPickPoi(poi: POI) {
   trip.addPoi(poi)
   onSelectPoi(poi.id)
 }
+
+/** 腾讯底图原生 POI：先以名称+坐标立卡，再用检索结果补齐地址/评分/类别 */
+function categoryFromName(name: string): POICategory {
+  if (/酒店|客栈|宾馆|民宿|旅馆| lodging/i.test(name)) return 'hotel'
+  if (/餐|食|小吃|咖啡|茶|酒|饭|烧烤|甜|面包/.test(name)) return 'food'
+  if (/商场|超市|购物|便利店|店/.test(name)) return 'shop'
+  return 'sight'
+}
+function metersBetween(a: LngLat, b: LngLat) {
+  const rad = Math.PI / 180
+  const dLat = (b.lat - a.lat) * rad
+  const dLng = (b.lng - a.lng) * rad
+  const s = Math.sin(dLat / 2) ** 2 + Math.cos(a.lat * rad) * Math.cos(b.lat * rad) * Math.sin(dLng / 2) ** 2
+  return 6371000 * 2 * Math.asin(Math.min(1, Math.sqrt(s)))
+}
+function onBaseMapPoi(info: { name: string; location: LngLat }) {
+  if (!activeTrip.value) return
+  const category = categoryFromName(info.name)
+  const poi: POI = {
+    id: `map-${info.location.lat.toFixed(5)}-${info.location.lng.toFixed(5)}`,
+    name: info.name, category, role: 'stop', location: info.location,
+    city: currentCity.value, address: '', tags: ['地图地点'], source: 'map',
+  }
+  trip.addPoi(poi)
+  ui.selectedSegmentId = null
+  ui.selectedPoiId = poi.id
+
+  if (!ui.mapKey) return
+  void (async () => {
+    try {
+      const r = await cityStore.searchPoi(info.name, currentCity.value, ui.mapKey)
+      const match = r.list.find(p => metersBetween(p.location, info.location) < 800)
+      if (match) {
+        trip.updatePoi(poi.id, {
+          category: match.category, address: match.address || '', rating: match.rating,
+          pricePerPerson: match.pricePerPerson, openTime: match.openTime, intro: match.intro,
+          tags: match.tags?.length ? match.tags : ['地图地点'], source: match.source, poiId: match.poiId,
+        })
+        return
+      }
+      const address = await cityStore.addressOf(info.location, ui.mapKey)
+      if (address) trip.updatePoi(poi.id, { address })
+    } catch { /* 详情补齐失败不影响已弹出的地点卡 */ }
+  })()
+}
 function onSearchPoi(poi: POI) {
   if (!activeTrip.value) return
   // O05：若来自「插入经停」，把该点插进段的两端之间，而不是追加到日末
@@ -288,7 +333,7 @@ function openMapDrawer(kind: 'itinerary' | 'expense' | 'today' | 'wishlist') {
         <div class="flex-1 min-h-0 flex flex-col">
           <DayRail />
           <DayPanel class="flex-1 min-h-0" :day-index="dayIndex" @select-poi="onSelectPoi" @focus-poi="onFocusPoi" @select-segment="onSelectSegment" @insert-stop="onInsertStop" @add-leg="onAddLeg" @edit-leg="onEditLeg" />
-          <SmartAssist class="max-h-[188px] overflow-y-auto border-t border-ink/15 shrink-0" :day-index="dayIndex" />
+          <SmartAssist class="max-h-[240px] overflow-y-auto border-t border-ink/15 shrink-0" :day-index="dayIndex" />
         </div>
       </aside>
 
@@ -354,6 +399,7 @@ function openMapDrawer(kind: 'itinerary' | 'expense' | 'today' | 'wishlist') {
             :base-map="ui.settings.baseMap"
             @select-poi="onSelectPoi"
             @pick-poi="onPickPoi"
+            @base-poi="onBaseMapPoi"
             @select-segment="onSelectSegment"
             @select-leg="onEditLeg"
             @map-click="onMapClick"
@@ -520,6 +566,7 @@ function openMapDrawer(kind: 'itinerary' | 'expense' | 'today' | 'wishlist') {
           <h3 class="font-brush text-lg text-ink">落一枚新印</h3>
           <button class="text-inkLight" @click="ui.closeModal()"><X :size="17" /></button>
         </div>
+
         <input v-model="customForm.name" placeholder="地点名称（必填）" class="w-full h-10 px-3 bg-mist border border-ochre/40 font-cn text-sm outline-none focus:border-celadon" />
         <input v-model="customForm.address" placeholder="地址（选填）" class="w-full h-10 px-3 bg-mist border border-ochre/40 font-cn text-sm outline-none focus:border-celadon" />
         <div class="flex gap-1.5">
