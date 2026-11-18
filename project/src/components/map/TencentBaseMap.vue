@@ -25,7 +25,6 @@ let timer: number | undefined
 let probeTimer: number | undefined
 let failTimer: number | undefined
 let markedReady = false
-let tileSeen = false
 
 function targetZoom() {
   const spanLng = Math.max(1e-6, props.bounds.maxLng - props.bounds.minLng)
@@ -97,7 +96,6 @@ function markFail() {
 
 function onTileSignal() {
   if (dead || markedReady) return
-  tileSeen = true
   // 等两帧让瓦片真正画上，避免空白 canvas 抢先盖住水墨底
   window.requestAnimationFrame(() => {
     window.requestAnimationFrame(() => {

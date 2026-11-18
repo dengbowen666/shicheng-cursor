@@ -1,12 +1,26 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { ChevronLeft, Wallet, CalendarDays, SunMedium, PenLine } from 'lucide-vue-next'
 import type { Trip } from '../../types'
+import { useTripStore } from '../../stores/trip'
+import { useUiStore } from '../../stores/ui'
 
 const props = defineProps<{ trip: Trip }>()
 const emit = defineEmits<{ edit: [] }>()
 const router = useRouter()
+const tripStore = useTripStore()
+const ui = useUiStore()
+
+const dateEditing = ref(false)
+function saveDate(e: Event) {
+  const v = (e.target as HTMLInputElement).value
+  dateEditing.value = false
+  if (v === (props.trip.startDate || '')) return
+  const before = props.trip.startDate
+  tripStore.updateTrip(props.trip.id, { startDate: v || undefined })
+  ui.toast(v ? `启程日期已设为 ${v}` : '已清除启程日期', '撤销', () => tripStore.updateTrip(props.trip.id, { startDate: before }))
+}
 
 const spent = computed(() => props.trip.expenses.reduce((s, e) => s + e.amount, 0))
 const ratio = computed(() => props.trip.totalBudget ? Math.min(1, spent.value / props.trip.totalBudget) : 0)
@@ -36,7 +50,17 @@ function goToday() { router.push({ path: `/trip/${props.trip.id}`, query: { view
           </button>
           <div class="font-cn text-[10px] md:text-xs text-inkLight tracking-widest truncate">
             {{ trip.cities.map(c => c.name).join(' · ') }} · {{ trip.days.length }} 日
-            <span v-if="trip.startDate" class="ml-2"><CalendarDays :size="10" class="inline" /> {{ trip.startDate }}</span>
+            <input
+              v-if="dateEditing"
+              type="date"
+              :value="trip.startDate || ''"
+              autofocus
+              class="ml-2 align-middle bg-mist border border-cyanq outline-none font-num text-xs text-ink px-1"
+              @change="saveDate" @blur="dateEditing = false"
+            />
+            <button v-else class="ml-2 align-middle inline-flex items-center gap-1 hover:text-cinnabar" :title="trip.startDate ? '点击改启程日期' : '点击补填启程日期'" @click.stop="dateEditing = true">
+              <CalendarDays :size="10" class="inline" /> {{ trip.startDate || '未定日期' }}
+            </button>
           </div>
         </div>
       </div>

@@ -1,18 +1,19 @@
-<script setup lang="ts">
+﻿<script setup lang="ts">
 /**
  * 地图总装（编辑器中央画布）：
  * 短按空白不落点；长按 600ms + 墨点涟漪落自定义点（D23 / D82）。
  */
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
-import type { DailyWeather, LngLat, POI, TransportSegment, Trip } from '../../types'
+import type { DailyWeather, Leg, LngLat, POI, TransportSegment, Trip } from '../../types'
 import type { MapBounds } from '../../lib/projection'
-import { expandBounds, fitBounds, unproject } from '../../lib/projection'
+import { expandBounds, fitBounds, project, unproject } from '../../lib/projection'
 import { useLongPress } from '../../composables/useLongPress'
 import { useUiStore } from '../../stores/ui'
 import { useCityStore } from '../../stores/city'
 import InkFallbackMap from './InkFallbackMap.vue'
 import TencentBaseMap from './TencentBaseMap.vue'
 import RouteLayer from './RouteLayer.vue'
+import LegLayer from './LegLayer.vue'
 import InkMarker from './InkMarker.vue'
 import WeatherBadge from './WeatherBadge.vue'
 import AnnotateLayer from './AnnotateLayer.vue'
@@ -42,6 +43,7 @@ const emit = defineEmits<{
   (e: 'select-poi', id: string): void
   (e: 'pick-poi', poi: POI): void
   (e: 'select-segment', id: string): void
+  (e: 'select-leg', id: string): void
   (e: 'map-click', location: LngLat): void
   (e: 'add-stroke', points: LngLat[]): void
 }>()
@@ -102,10 +104,29 @@ const visibleSegments = computed<TransportSegment[]>(() => {
   return ids.map(id => props.trip.segments[id]).filter((s): s is TransportSegment => !!s)
 })
 
+// L04：城际段——当日只看本日的，全览看全部；两端城市中心用于连线
+const visibleLegs = computed<Leg[]>(() => {
+  const all = Object.values(props.trip.legs)
+  if (props.viewMode === 'all') return all
+  const ids = new Set(day.value?.legIds || [])
+  return all.filter(l => ids.has(l.id))
+})
+function cityCenter(name: string): LngLat | undefined {
+  return props.trip.cities.find(c => c.name === name)?.center
+}
+
 const fitted = computed(() => {
   const pts: LngLat[] = visiblePois.value.map(p => p.location)
   for (const seg of visibleSegments.value) {
     if (seg.path?.length) pts.push(...seg.path)
+  }
+  // L04：全览模式把城际两端城市纳入视野，才能看到跨城连线；当日模式不纳入，避免市内行程被挤成一点
+  if (props.viewMode === 'all') {
+    for (const leg of visibleLegs.value) {
+      const a = cityCenter(leg.fromCity), b = cityCenter(leg.toCity)
+      if (a) pts.push(a)
+      if (b) pts.push(b)
+    }
   }
   const origin = pts[0] || props.trip.cities[0]?.center
   if (origin) {
@@ -144,8 +165,10 @@ const bounds = computed(() => {
 })
 
 watch(() => [props.dayIndex, props.viewMode, props.city], () => {
+  stopFocusAnim()
   camScale.value = 1
   camCenter.value = null
+  focusedPoiId.value = null
   glView.value = null
 })
 
@@ -235,16 +258,55 @@ function zoomBy(factor: number) {
   commitLive()
 }
 function resetCam() {
+  stopFocusAnim()
   liveTx = 0
   liveTy = 0
   liveS = 1
   applyLive()
   camScale.value = 1
   camCenter.value = null
+  focusedPoiId.value = null
+  focusRing.value = 0
 }
+
+/** 日程/时间轴点地点 → 地图平滑移到该处并放大；供父组件通过 ref 调用 */
+const focusedPoiId = ref<string | null>(null)
+const focusRing = ref(0)
+let focusAnim = 0
+function stopFocusAnim() {
+  if (focusAnim) { window.cancelAnimationFrame(focusAnim); focusAnim = 0 }
+}
+const easeInOut = (t: number) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2)
+function focusOn(location: LngLat, poiId: string | null = null, targetScale = 2.6, ms = 620) {
+  stopFocusAnim()
+  clearTimeout(commitTimer)
+  liveTx = 0; liveTy = 0; liveS = 1
+  applyLive()
+  const fromC = camCenter.value || { lng: (fitted.value.minLng + fitted.value.maxLng) / 2, lat: (fitted.value.minLat + fitted.value.maxLat) / 2 }
+  const fromS = camScale.value
+  const toC = location
+  const toS = Math.max(1, Math.min(8, targetScale))
+  const start = performance.now()
+  focusedPoiId.value = poiId
+  focusRing.value = Date.now()
+  const step = (now: number) => {
+    const p = easeInOut(Math.min(1, (now - start) / ms))
+    camCenter.value = { lng: fromC.lng + (toC.lng - fromC.lng) * p, lat: fromC.lat + (toC.lat - fromC.lat) * p }
+    camScale.value = fromS + (toS - fromS) * p
+    if (p < 1) focusAnim = window.requestAnimationFrame(step)
+    else {
+      focusAnim = 0
+      const ringAt = focusRing.value
+      window.setTimeout(() => { if (focusRing.value === ringAt) focusRing.value = 0 }, 1200)
+    }
+  }
+  focusAnim = window.requestAnimationFrame(step)
+}
+function focusPoi(poi: POI) { focusOn(poi.location, poi.id) }
 
 function onWheel(e: WheelEvent) {
   e.preventDefault()
+  stopFocusAnim()
   const el = rootEl.value
   if (!el) return
   const rect = el.getBoundingClientRect()
@@ -259,6 +321,7 @@ function onWheel(e: WheelEvent) {
 }
 
 function onMapPointerDown(e: PointerEvent) {
+  stopFocusAnim()
   const interactive = (e.target as Element | null)?.closest?.('[data-map-interactive]')
   if (interactive) {
     panned = false
@@ -336,6 +399,7 @@ onBeforeUnmount(() => {
   window.removeEventListener('resize', measure)
   rootEl.value?.removeEventListener('wheel', onWheel)
   window.clearTimeout(commitTimer)
+  stopFocusAnim()
 })
 
 const glFailed = ref(false)
@@ -399,7 +463,7 @@ const longPress = useLongPress((e) => {
   showRipple(e)
   const loc = locationFromEvent(e)
   if (loc) emit('map-click', loc)
-}, { ms: 900 })
+}, { ms: 600 })
 
 function onClick(e: MouseEvent) {
   if (props.annotateMode) return
@@ -411,8 +475,34 @@ function onClick(e: MouseEvent) {
   weatherOpen.value = false
 }
 
+/** 朱笔地理真值（D98）：屏幕笔画 → 经纬度点列；视野变化时按投影重绘，笔迹跟随地图 */
+const geoStrokes = ref<LngLat[][]>([])
+
+function strokeToScreen(locs: LngLat[]): Pt[] {
+  return locs.map(p => {
+    const s = project(p, overlayBounds.value, stageSize.value.w, stageSize.value.h)
+    return { x: s.x / k.value, y: s.y / k.value }
+  })
+}
+
 function onStroke(points: Pt[]) {
-  emit('add-stroke', points.map(p => unproject(p.x * k.value, p.y * k.value, overlayBounds.value, stageSize.value.w, stageSize.value.h)))
+  const locs = points.map(p => unproject(p.x * k.value, p.y * k.value, overlayBounds.value, stageSize.value.w, stageSize.value.h))
+  geoStrokes.value.push(locs)
+  emit('add-stroke', locs)
+}
+
+watch(overlayBounds, () => {
+  const list = geoStrokes.value.map(strokeToScreen).filter(p => p.length >= 2)
+  if (list.length) annotateRef.value?.redraw(list)
+})
+
+/** 持久化批注载入：只存地理点列，按当前视野投影还原 */
+function loadPersisted(strokes: { points?: LngLat[] }[]) {
+  geoStrokes.value = strokes
+    .map(s => (s.points || []).filter(p => Number.isFinite(p?.lng) && Number.isFinite(p?.lat)))
+    .filter(p => p.length >= 2)
+  const list = geoStrokes.value.map(strokeToScreen)
+  if (list.length) annotateRef.value?.redraw(list)
 }
 
 function selectPoi(id: string) {
@@ -426,11 +516,12 @@ function pickRec(id: string) {
 }
 function onGlView(b: MapBounds) { glView.value = b }
 function selectSegment(id: string) { emit('select-segment', id) }
+function selectLeg(id: string) { emit('select-leg', id) }
 
-function undoAnnotation() { annotateRef.value?.undo() }
-function clearAnnotations() { annotateRef.value?.clear() }
-function redrawAnnotations(points: Pt[][]) { annotateRef.value?.redraw(points) }
-defineExpose({ undoAnnotation, clearAnnotations, redrawAnnotations })
+function undoAnnotation() { geoStrokes.value.pop(); annotateRef.value?.undo() }
+function clearAnnotations() { geoStrokes.value = []; annotateRef.value?.clear() }
+const activeSelectedId = computed(() => focusedPoiId.value || props.selectedPoiId)
+defineExpose({ undoAnnotation, clearAnnotations, loadPersisted, focusOn, focusPoi, resetCam })
 </script>
 
 <template>
@@ -480,10 +571,17 @@ defineExpose({ undoAnnotation, clearAnnotations, redrawAnnotations })
       @select-segment="selectSegment"
     />
 
+    <LegLayer
+      class="absolute inset-0 z-[3]"
+      :legs="visibleLegs" :cities="trip.cities" :bounds="overlayBounds"
+      :width="stageSize.w" :height="stageSize.h" :k="k" :view-mode="viewMode"
+      @select-leg="selectLeg"
+    />
+
     <InkMarker
       class="absolute inset-0 z-[5]"
       :pois="visibleRecs" :bounds="overlayBounds" :width="stageSize.w" :height="stageSize.h" :k="k"
-      :selected-id="selectedPoiId"
+      :selected-id="activeSelectedId"
       ghost
       @select="pickRec"
     />
@@ -491,7 +589,7 @@ defineExpose({ undoAnnotation, clearAnnotations, redrawAnnotations })
     <InkMarker
       class="absolute inset-0 z-[6]"
       :pois="visiblePois" :bounds="overlayBounds" :width="stageSize.w" :height="stageSize.h" :k="k"
-      :selected-id="selectedPoiId"
+      :selected-id="activeSelectedId"
       @select="selectPoi"
     />
 
@@ -518,6 +616,17 @@ defineExpose({ undoAnnotation, clearAnnotations, redrawAnnotations })
       class="ink-ripple pointer-events-none absolute z-30"
       :style="{ left: `${ripple.x}px`, top: `${ripple.y}px` }"
     />
+
+    <!-- 日程聚焦：画布中心的扩散墨圈，短暂停留后淡出 -->
+    <div
+      v-if="focusRing"
+      :key="focusRing"
+      class="focus-ring pointer-events-none absolute z-20 left-1/2 top-1/2"
+    >
+      <span class="focus-ring-core"></span>
+      <span class="focus-ring-wave"></span>
+      <span class="focus-ring-wave focus-ring-wave-2"></span>
+    </div>
 
     <div
       v-if="annotateMode"
@@ -570,7 +679,44 @@ defineExpose({ undoAnnotation, clearAnnotations, redrawAnnotations })
     box-shadow: 0 0 0 18px rgba(166, 72, 52, 0);
   }
 }
+.focus-ring {
+  width: 0;
+  height: 0;
+}
+.focus-ring-core,
+.focus-ring-wave {
+  position: absolute;
+  left: 0;
+  top: 0;
+  border-radius: 999px;
+  transform: translate(-50%, -50%);
+}
+.focus-ring-core {
+  width: 12px;
+  height: 12px;
+  margin: 0;
+  background: rgba(166, 72, 52, 0.85);
+  box-shadow: 0 0 0 3px rgba(250, 246, 237, 0.9);
+  animation: focusCore 1.2s ease-out forwards;
+}
+.focus-ring-wave {
+  width: 28px;
+  height: 28px;
+  border: 1.5px solid rgba(166, 72, 52, 0.7);
+  animation: focusWave 1.2s ease-out forwards;
+}
+.focus-ring-wave-2 { animation-delay: 0.18s; }
+@keyframes focusCore {
+  0% { opacity: 0; transform: translate(-50%, -50%) scale(0.4); }
+  30% { opacity: 1; }
+  100% { opacity: 0; transform: translate(-50%, -50%) scale(1); }
+}
+@keyframes focusWave {
+  0% { opacity: 0.85; transform: translate(-50%, -50%) scale(0.5); }
+  100% { opacity: 0; transform: translate(-50%, -50%) scale(3.6); }
+}
 @media (prefers-reduced-motion: reduce) {
   .ink-ripple { animation: none; opacity: 0.7; }
+  .focus-ring-core, .focus-ring-wave { animation-duration: 0.3s; }
 }
 </style>

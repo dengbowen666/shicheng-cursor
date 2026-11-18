@@ -2,7 +2,7 @@
 import { computed, ref, watch } from 'vue'
 import { use } from 'echarts/core'
 import { CanvasRenderer } from 'echarts/renderers'
-import { PieChart, BarChart } from 'echarts/charts'
+import { BarChart } from 'echarts/charts'
 import { TooltipComponent, GridComponent } from 'echarts/components'
 import VChart from 'vue-echarts'
 import {
@@ -14,7 +14,7 @@ import { EXPENSE_CATEGORIES } from '../../types'
 import { useTripStore } from '../../stores/trip'
 import { useUiStore } from '../../stores/ui'
 
-use([CanvasRenderer, PieChart, BarChart, TooltipComponent, GridComponent])
+use([CanvasRenderer, BarChart, TooltipComponent, GridComponent])
 
 const props = defineProps<{ dayIndex?: number }>()
 const emit = defineEmits<{ close: [] }>()
@@ -47,18 +47,6 @@ const byCategory = computed(() => EXPENSE_CATEGORIES.map(c => ({
 })))
 
 const C = { cinnabar: '#A64834', celadon: '#8FA9A6', hill: '#D9CFC0', inkLight: '#6E6A62', ochre: '#B08D70' }
-
-const pieOption = computed(() => ({
-  tooltip: { trigger: 'item', formatter: '{b} ¥{c} ({d}%)' },
-  series: [{
-    type: 'pie', radius: ['64%', '84%'], center: ['50%', '50%'], silent: true,
-    label: { show: false },
-    data: [
-      { value: Math.round(spent.value) / 100, name: '已用', itemStyle: { color: overspent.value ? C.cinnabar : C.celadon } },
-      { value: Math.max(0, Math.round(remainder.value)) / 100, name: '结余', itemStyle: { color: C.hill } },
-    ],
-  }],
-}))
 
 const barOption = computed(() => ({
   grid: { left: 46, right: 12, top: 14, bottom: 24 },
@@ -179,21 +167,21 @@ function prefillTransport() {
         <span class="seal w-12 h-12 text-sm ml-auto">逾制</span>
       </div>
 
-      <!-- 总览：有预算显示环形 + 柱状，无预算只显示累计支出 -->
+      <!-- O12：数字卡 + 全宽分类柱状；三态用数字和颜色表达，不再用只编码一个比值的环形 -->
       <template v-if="hasBudget">
-        <div class="paper-card p-3 grid grid-cols-2 gap-3">
-          <div class="relative h-[150px]">
-            <VChart :option="pieOption" class="w-full h-full" />
-            <div class="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-              <span class="font-num text-xl" :class="overspent ? 'text-cinnabar' : 'text-ink'">¥{{ yuan(spent) }}</span>
-              <span class="font-cn text-[10px] text-inkLight">预算 ¥{{ yuan(budget) }}</span>
+        <div class="paper-card p-3">
+          <div class="flex items-end justify-between gap-3">
+            <div>
+              <p class="font-cn text-[10px] text-inkLight tracking-wider">已用</p>
+              <p class="font-num text-2xl leading-tight" :class="overspent ? 'text-cinnabar' : 'text-ink'">¥{{ yuan(spent) }}</p>
+              <p class="font-cn text-[10px] text-inkLight mt-0.5">预算 ¥{{ yuan(budget) }} · 执行 {{ ratio }}%</p>
+            </div>
+            <div class="text-right">
+              <p class="font-cn text-[10px] text-inkLight tracking-wider">{{ remainder >= 0 ? '结余' : '超支' }}</p>
+              <p class="font-num text-xl leading-tight" :class="overspent ? 'text-cinnabar' : 'text-celadonDeep'">¥{{ yuan(Math.abs(remainder)) }}</p>
             </div>
           </div>
-          <div class="h-[150px]"><VChart :option="barOption" class="w-full h-full" /></div>
-        </div>
-        <div class="flex items-center justify-between font-cn text-[11px] text-inkLight">
-          <span>预算执行 {{ ratio }}%</span>
-          <span :class="overspent ? 'text-cinnabar' : 'text-celadonDeep'">{{ remainder >= 0 ? '结余' : '超支' }} ¥{{ yuan(Math.abs(remainder)) }}</span>
+          <div class="h-[130px] mt-2"><VChart :option="barOption" class="w-full h-full" /></div>
         </div>
       </template>
       <template v-else>

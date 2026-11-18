@@ -3,17 +3,17 @@ import { computed } from 'vue'
 import {
   X, CloudSun, Sun, Cloud, CloudRain, CloudSnow, CloudFog, Wind,
   Footprints, Car, Bus, Bike, ChevronRight, BedDouble,
-  Coins, AlertTriangle, Sparkles,
+  Coins, AlertTriangle, Sparkles, TrainFront, Train, Plane, ArrowRight,
 } from 'lucide-vue-next'
-import type { POI, TransportSegment, Expense, TransportMode } from '../../types'
-import { MODE_LABEL } from '../../types'
+import type { POI, TransportSegment, Expense, TransportMode, Leg, LegMode } from '../../types'
+import { MODE_LABEL, LEG_MODE_LABEL, LEG_MODE_COLOR } from '../../types'
 import { useTripStore } from '../../stores/trip'
 import { useUiStore } from '../../stores/ui'
 import { useWeatherStore } from '../../stores/weather'
 import { deriveDay, dayStats } from '../../lib/timeline'
 
 const props = defineProps<{ dayIndex: number }>()
-const emit = defineEmits<{ close: [] }>()
+const emit = defineEmits<{ close: []; 'focus-poi': [id: string]; 'select-poi': [id: string] }>()
 
 const trip = useTripStore()
 const ui = useUiStore()
@@ -27,12 +27,12 @@ const prevCity = computed(() => {
 const entries = computed(() => {
   const d = day.value
   if (!d || !trip.activeTrip) return []
-  return deriveDay(d, trip.activeTrip.pois, trip.activeTrip.segments, trip.activeTrip.expenses, prevCity.value)
+  return deriveDay(d, trip.activeTrip.pois, trip.activeTrip.segments, trip.activeTrip.expenses, prevCity.value, trip.activeTrip.legs)
 })
 const stats = computed(() => {
   const d = day.value
   if (!d || !trip.activeTrip) return { stopCount: 0, travelMin: 0, endTime: '—' }
-  return dayStats(d, trip.activeTrip.pois, trip.activeTrip.segments)
+  return dayStats(d, trip.activeTrip.pois, trip.activeTrip.segments, trip.activeTrip.legs)
 })
 
 const forecast = computed(() => weather.forDate(day.value?.city || '', day.value?.date))
@@ -47,8 +47,16 @@ const climate = computed(() => weather.climate(day.value?.date))
 
 function poiOf(id: string): POI | undefined { return trip.activeTrip?.pois[id] }
 function segOf(id: string): TransportSegment | undefined { return trip.activeTrip?.segments[id] }
+function legOf(id: string): Leg | undefined { return trip.activeTrip?.legs[id] }
 function expOf(id: string): Expense | undefined { return trip.activeTrip?.expenses.find(e => e.id === id) }
 function yuan(cents: number) { return (cents / 100).toFixed(2) }
+
+const LEG_ICON: Record<LegMode, typeof TrainFront> = {
+  highspeed: TrainFront, train: Train, flight: Plane, car: Car, coach: Bus, walk: Footprints,
+}
+function openLeg(leg: Leg) {
+  ui.openModal('leg', { legId: leg.id })
+}
 
 const WX_ICON = { 晴: Sun, 多云: CloudSun, 阴: Cloud, 雨: CloudRain, 雪: CloudSnow, 雾: CloudFog, 雷雨: CloudRain }
 function wxIcon(text?: string) { return WX_ICON[(text || '') as keyof typeof WX_ICON] || CloudSun }
@@ -142,6 +150,30 @@ function openSegment(seg: TransportSegment) {
             </div>
           </div>
 
+          <!-- L03：城际段条目 -->
+          <button
+            v-else-if="e.kind === 'leg' && legOf(e.legId)"
+            class="relative w-full flex items-center gap-3 py-2 text-left group"
+            @click="openLeg(legOf(e.legId)!)"
+          >
+            <span class="w-11 shrink-0 text-right font-num text-[11px] text-cinnabar">{{ e.time }}</span>
+            <span class="relative z-10 w-5 h-5 shrink-0 flex items-center justify-center rounded-full text-mist border-2 border-mist" :style="{ background: LEG_MODE_COLOR[legOf(e.legId)!.mode] }">
+              <component :is="LEG_ICON[legOf(e.legId)!.mode]" :size="11" />
+            </span>
+            <span class="flex-1 min-w-0">
+              <span class="flex items-center gap-1 font-cn text-xs text-ink group-hover:text-cinnabar transition-colors">
+                {{ legOf(e.legId)!.fromCity }} <ArrowRight :size="11" class="text-cinnabar shrink-0" /> {{ legOf(e.legId)!.toCity }}
+              </span>
+              <span class="block font-cn text-[10px] text-inkLight mt-0.5">
+                {{ LEG_MODE_LABEL[legOf(e.legId)!.mode] }} · {{ e.time }}–{{ e.arrive }}
+                <template v-if="legOf(e.legId)!.note"> · {{ legOf(e.legId)!.note }}</template>
+                <template v-if="legOf(e.legId)!.cost"> · ¥{{ yuan(legOf(e.legId)!.cost!) }}</template>
+                <span v-if="legOf(e.legId)!.estimated" class="text-cinnabar"> · 估</span>
+              </span>
+            </span>
+            <ChevronRight :size="13" class="text-ink/30 shrink-0" />
+          </button>
+
           <!-- 交通段 -->
           <button
             v-else-if="e.kind === 'move' && segOf(e.segmentId)"
@@ -170,7 +202,7 @@ function openSegment(seg: TransportSegment) {
             <div class="flex-1 min-w-0 paper-card px-3 py-2">
               <div class="flex items-start gap-2">
                 <div class="min-w-0 flex-1">
-                  <p class="font-cn text-sm text-ink">{{ poiOf(e.poiId)!.name }}</p>
+                  <button class="block text-left font-cn text-sm text-ink hover:text-cinnabar" :title="`在地图上聚焦 ${poiOf(e.poiId)!.name}`" @click="emit('focus-poi', e.poiId)">{{ poiOf(e.poiId)!.name }}</button>
                   <p class="font-num text-[10px] text-inkLight mt-0.5">{{ e.arrive }} 至 {{ e.leave }} · {{ poiOf(e.poiId)!.stayMinutes || 60 }} 分</p>
                 </div>
                 <span v-if="poiOf(e.poiId)!.visitedAt" class="seal seal-stamp w-8 h-8 text-[9px] shrink-0">已至</span>

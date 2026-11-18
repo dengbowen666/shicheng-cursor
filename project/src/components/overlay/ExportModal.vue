@@ -3,8 +3,9 @@ import { ref } from 'vue'
 import { X, Image, Printer, FileJson, Download, Upload, Check, Loader2 } from 'lucide-vue-next'
 import type { Trip } from '../../types'
 import { exportScrollPng, exportPrintHtml, exportJson } from '../../lib/export'
-import { useTripStore } from '../../stores/trip'
+import { useTripStore, type ImportPolicy } from '../../stores/trip'
 import { useUiStore } from '../../stores/ui'
+import ImportConfirmModal from './ImportConfirmModal.vue'
 
 const props = defineProps<{ trip: Trip }>()
 const emit = defineEmits<{ close: [] }>()
@@ -13,6 +14,11 @@ const tripStore = useTripStore()
 const ui = useUiStore()
 const busy = ref(false)
 const fileInput = ref<HTMLInputElement | null>(null)
+
+// O09：导入冲突确认
+const pendingJson = ref('')
+const importConflicts = ref<string[]>([])
+const importTotal = ref(0)
 
 async function png() {
   if (busy.value) return
@@ -42,7 +48,16 @@ async function restore(e: Event) {
   const file = input.files?.[0]
   if (!file) return
   try {
-    const res = tripStore.importData(await file.text())
+    const text = await file.text()
+    const pre = tripStore.inspectImport(text)
+    if (!pre.ok) { ui.toast(pre.message); return }
+    importTotal.value = pre.conflicts.length
+    if (pre.conflicts.length) {
+      pendingJson.value = text
+      importConflicts.value = pre.conflicts
+      return
+    }
+    const res = tripStore.importData(text)
     ui.toast(res.message)
     if (res.ok) emit('close')
   } catch {
@@ -50,6 +65,15 @@ async function restore(e: Event) {
   } finally {
     input.value = ''
   }
+}
+
+function resolveImport(policy: ImportPolicy) {
+  if (!pendingJson.value) return
+  const res = tripStore.importData(pendingJson.value, policy)
+  ui.toast(res.message)
+  pendingJson.value = ''
+  importConflicts.value = []
+  if (res.ok) emit('close')
 }
 </script>
 
@@ -104,7 +128,7 @@ async function restore(e: Event) {
           <span class="seal-outline seal w-9 h-9 shrink-0"><Upload :size="16" /></span>
           <span class="flex-1 text-left">
             <span class="block font-cn text-sm text-ink">JSON 恢复</span>
-            <span class="block font-cn text-[10px] text-inkLight mt-0.5">从备份文件导入，同 ID 覆盖、异 ID 并存</span>
+            <span class="block font-cn text-[10px] text-inkLight mt-0.5">从备份文件导入，同 ID 冲突时可选覆盖/跳过/另存</span>
           </span>
           <Upload :size="16" class="text-inkLight group-hover:text-cinnabar shrink-0" />
         </button>
@@ -114,6 +138,12 @@ async function restore(e: Event) {
       <p class="flex items-center gap-1.5 font-cn text-[10px] text-inkLight mt-4 pt-3 border-t border-ink/10">
         <Check :size="12" class="text-celadonDeep shrink-0" /> 本机生成，不上传云端；恢复前建议先做一份备份。
       </p>
+
+      <ImportConfirmModal
+        v-if="importConflicts.length"
+        :conflicts="importConflicts" :total="importTotal"
+        @choose="resolveImport" @cancel="importConflicts = []; pendingJson = ''"
+      />
     </div>
   </div>
 </template>

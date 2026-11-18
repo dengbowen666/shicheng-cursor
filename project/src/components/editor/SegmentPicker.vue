@@ -5,11 +5,12 @@ import { useUiStore } from '../../stores/ui'
 import { estimate, haversineFlat, recommendMode } from '../../lib/estimate'
 import { MODE_LABEL } from '../../types'
 import type { TransportMode, TransportSegment } from '../../types'
-import { X, Car, Footprints, Bus, Bike, Sparkles, AlertTriangle, Coins } from 'lucide-vue-next'
+import { X, Car, Footprints, Bus, Bike, Sparkles, AlertTriangle, Coins, Check } from 'lucide-vue-next'
 
 const props = defineProps<{ segment: TransportSegment }>()
 const emit = defineEmits<{
   choose: [mode: TransportMode]
+  pin: [pinned: boolean]
   close: []
 }>()
 
@@ -102,6 +103,18 @@ function choose(mode: TransportMode) {
           </span>
           <span class="text-cinnabar text-[10px]">估</span>
         </template>
+      </button>
+
+      <!-- O05：固定走法 -->
+      <button
+        class="w-full flex items-center gap-2 px-2.5 py-2 border mt-1.5 text-left"
+        :class="segment.pinned ? 'border-cinnabar/50 bg-cinnabar/5 text-cinnabar' : 'border-ink/15 text-inkLight'"
+        @click="emit('pin', !segment.pinned)"
+      >
+        <span class="w-3.5 h-3.5 border flex items-center justify-center shrink-0" :class="segment.pinned ? 'border-cinnabar bg-cinnabar text-mist' : 'border-ink/30'">
+          <Check v-if="segment.pinned" :size="10" />
+        </span>
+        <span class="font-cn text-[11px] flex-1">固定此走法 · 增删地点时不重置</span>
       </button>
 
       <p class="font-cn text-[10px] text-inkLight/80 pt-1 leading-relaxed">

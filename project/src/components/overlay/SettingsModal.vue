@@ -2,8 +2,9 @@
 import { ref, watch } from 'vue'
 import { X, KeyRound, Info, Check, Map, FileJson, Upload, Trash2, Settings2, CircleHelp } from 'lucide-vue-next'
 import { useUiStore, type BaseMapKind } from '../../stores/ui'
-import { useTripStore } from '../../stores/trip'
+import { useTripStore, type ImportPolicy } from '../../stores/trip'
 import { exportJson } from '../../lib/export'
+import ImportConfirmModal from './ImportConfirmModal.vue'
 
 const emit = defineEmits<{ close: [] }>()
 
@@ -12,6 +13,11 @@ const trip = useTripStore()
 
 const draftKey = ref(ui.mapKey)
 const fileInput = ref<HTMLInputElement | null>(null)
+
+// O09：导入冲突确认
+const pendingJson = ref('')
+const importConflicts = ref<string[]>([])
+const importTotal = ref(0)
 
 watch(() => ui.mapKey, v => { draftKey.value = v })
 
@@ -41,13 +47,30 @@ async function restore(e: Event) {
   const file = input.files?.[0]
   if (!file) return
   try {
-    const res = trip.importData(await file.text())
+    const text = await file.text()
+    const pre = trip.inspectImport(text)
+    if (!pre.ok) { ui.toast(pre.message); return }
+    importTotal.value = pre.conflicts.length
+    if (pre.conflicts.length) {
+      pendingJson.value = text
+      importConflicts.value = pre.conflicts
+      return
+    }
+    const res = trip.importData(text)
     ui.toast(res.message)
   } catch {
     ui.toast('文件读取失败')
   } finally {
     input.value = ''
   }
+}
+
+function resolveImport(policy: ImportPolicy) {
+  if (!pendingJson.value) return
+  const res = trip.importData(pendingJson.value, policy)
+  ui.toast(res.message)
+  pendingJson.value = ''
+  importConflicts.value = []
 }
 
 function clearAll() {
@@ -147,6 +170,12 @@ function openKeyGuide() {
         所有偏好与数据仅存本机，拾程不上传、不追踪。清空前记得先导出一份 JSON。
         <Check :size="11" class="inline align-text-bottom ml-1 text-celadonDeep" />
       </p>
+
+      <ImportConfirmModal
+        v-if="importConflicts.length"
+        :conflicts="importConflicts" :total="importTotal"
+        @choose="resolveImport" @cancel="importConflicts = []; pendingJson = ''"
+      />
     </div>
   </div>
 </template>

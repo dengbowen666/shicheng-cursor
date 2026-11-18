@@ -50,6 +50,7 @@ const nanhai = chinaPaths.nanhai
 const VB_W = 1000
 const VB_H = 800
 const hovered = ref<string | null>(null)
+const hoveredSeal = ref<string | null>(null)
 const reduceMotion = ref(false)
 const entered = ref(false)
 
@@ -577,6 +578,8 @@ function onBack() {
           :class="reduceMotion ? '' : 'stamp-in'"
           :style="{ animationDelay: m.delay }"
           @pointerdown.stop
+          @pointerenter="hoveredSeal = m.name"
+          @pointerleave="hoveredSeal = null"
           @click.stop="onCityClick(m.name, $event)"
         >
           <title>{{ m.name }}{{ m.count && m.count > 1 ? ` · ${m.count} 卷` : '' }}</title>
@@ -587,10 +590,6 @@ function onBack() {
               <circle :r="18 * k" fill="none" :stroke="C.cinnabar" :stroke-width="1.2 * k" class="eye-breath" />
               <line x1="0" y1="0" x2="0" :y2="-48 * k" stroke="#6E6A62" :stroke-width="1 * k" opacity="0.55" />
               <circle :cy="-48 * k" :r="2.2 * k" :fill="C.cinnabar" opacity="0.85" />
-              <text
-                :y="-54 * k" text-anchor="middle" :font-size="11 * k" :fill="C.ink"
-                font-family="'Ma Shan Zheng','KaiTi',serif"
-              >{{ m.name }}</text>
             </g>
 
             <g :transform="`translate(${-m.size / 2}, ${-m.size / 2})`" pointer-events="none">
@@ -612,14 +611,15 @@ function onBack() {
             </g>
 
             <text
-              v-if="labelPlan.get(m.name) && !m.isFocus"
+              v-if="hoveredSeal === m.name"
               pointer-events="none"
-              :x="(labelPlan.get(m.name)!.x - m.x)"
-              :y="(labelPlan.get(m.name)!.y - m.y)"
-              :text-anchor="labelPlan.get(m.name)!.anchor"
-              :font-size="11 * k"
+              class="seal-name-hover"
+              :x="(labelPlan.get(m.name)?.x ?? m.x) - m.x"
+              :y="(labelPlan.get(m.name)?.y ?? m.y - m.size / 2 - 6 * k) - m.y"
+              text-anchor="middle"
+              :font-size="12 * k"
               :fill="selectedCity === m.name ? C.cinnabarDeep : C.ink"
-              :stroke="C.mist" :stroke-width="3 * k" paint-order="stroke" stroke-linejoin="round"
+              :stroke="C.mist" :stroke-width="3.5 * k" paint-order="stroke" stroke-linejoin="round"
               font-family="'Noto Serif SC','Songti SC',serif"
             >{{ m.name }}</text>
 
@@ -695,6 +695,11 @@ function onBack() {
   transform: translateY(-2px) scale(1.05);
   filter: drop-shadow(0 3px 4px rgba(38, 35, 31, 0.22));
 }
+.seal-name-hover { animation: sealNameIn 0.16s ease-out both; pointer-events: none; }
+@keyframes sealNameIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
 .eye-breath { animation: eyeBreath 2.4s ease-in-out infinite; }
 @keyframes eyeBreath {
   0%, 100% { opacity: 0.5; }
@@ -707,7 +712,7 @@ function onBack() {
   to { opacity: 0.12; }
 }
 @media (prefers-reduced-motion: reduce) {
-  .stamp-in, .eye-breath, .cloud-pass { animation: none !important; }
+  .stamp-in, .eye-breath, .cloud-pass, .seal-name-hover { animation: none !important; }
   .city-seal-inner:hover { transform: none; filter: none; }
 }
 </style>

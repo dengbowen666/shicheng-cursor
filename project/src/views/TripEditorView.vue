@@ -2,7 +2,7 @@
 import { computed, defineAsyncComponent, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import {
-  Archive, ChevronDown, ChevronUp, Download, Eye, Heart, ListChecks,
+  Archive, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, Download, Eye, Heart, ListChecks,
   Map as MapIcon, PenLine, Play, ReceiptText, Route as RouteIcon, Settings2,
   Sparkles, SunMedium, Trash2, Undo2, Utensils, BedDouble, Landmark, X,
 } from 'lucide-vue-next'
@@ -15,6 +15,7 @@ import PoiSearch from '../components/editor/PoiSearch.vue'
 import DayPanel from '../components/editor/DayPanel.vue'
 import SmartAssist from '../components/editor/SmartAssist.vue'
 import SegmentPicker from '../components/editor/SegmentPicker.vue'
+import LegEditor from '../components/editor/LegEditor.vue'
 import WishlistPanel from '../components/layout/WishlistPanel.vue'
 import PlaceCard from '../components/panels/PlaceCard.vue'
 import ItineraryDrawer from '../components/panels/ItineraryDrawer.vue'
@@ -27,7 +28,7 @@ import { useTripStore } from '../stores/trip'
 import { useUiStore } from '../stores/ui'
 import { useWeatherStore } from '../stores/weather'
 import { useCityStore } from '../stores/city'
-import type { LngLat, POI, POICategory } from '../types'
+import type { Leg, LngLat, POI, POICategory } from '../types'
 
 // 图表类面板按需加载，避免编辑器首屏携带完整 ECharts
 const ExpenseDrawer = defineAsyncComponent(() => import('../components/panels/ExpenseDrawer.vue'))
@@ -42,6 +43,8 @@ const weatherStore = useWeatherStore()
 const cityStore = useCityStore()
 
 const mapRef = ref<InstanceType<typeof MapCanvas> | null>(null)
+const poiSearchRef = ref<InstanceType<typeof PoiSearch> | null>(null)
+const pendingInsertSegId = ref<string | null>(null)
 const showReview = ref(false)
 const customLocation = ref<LngLat | null>(null)
 const customForm = ref({ name: '', category: 'custom' as POICategory, address: '', note: '' })
@@ -65,6 +68,13 @@ const selectedSegment = computed(() => {
   const id = ui.selectedSegmentId
   return id && activeTrip.value ? activeTrip.value.segments[id] || null : null
 })
+// L02/L04：城际段编辑状态。payload = { legId?: string }，legId 缺省表示新建
+const legEditorPayload = computed(() => ui.modal === 'leg' ? (ui.modalPayload || {}) : null)
+const editingLeg = computed<Leg | null>(() => {
+  const id = legEditorPayload.value?.legId
+  return id && activeTrip.value ? activeTrip.value.legs[id] || null : null
+})
+const legEditorDefaultFrom = computed(() => legEditorPayload.value?.defaultFrom || '')
 const isFinished = computed(() => !!activeTrip.value && (activeTrip.value.archived || !!activeTrip.value.completedAt))
 const sheetHeight = computed(() => ui.sheet === 'peek' ? 'h-[76px]' : ui.sheet === 'half' ? 'h-[45vh]' : 'h-[92vh]')
 
@@ -77,7 +87,7 @@ function onKeyEsc(e: KeyboardEvent) {
   if (e.key !== 'Escape') return
   if (ui.annotateMode) { ui.annotateMode = false; return }
   if (ui.modal) { ui.closeModal(); return }
-  if (ui.selectedPoiId) { ui.selectedPoiId = null; return }
+  if (ui.selectedPoiId || ui.selectedSegmentId) { ui.clearSelection(); return }
   if (showReview.value) { showReview.value = false; return }
   if (ui.replaying) { ui.replaying = false; return }
   if (ui.drawer) ui.closeDrawer()
@@ -109,12 +119,28 @@ function editTitle() {
   if (next?.trim()) trip.updateTrip(activeTrip.value.id, { title: next.trim() })
 }
 function onSelectPoi(id: string) { ui.selectedPoiId = id; ui.selectedSegmentId = null }
+/** 日程/时间轴点地点 → 地图平滑聚焦该处并高亮印章，不弹详情卡 */
+function onFocusPoi(id: string) {
+  const poi = activeTrip.value?.pois[id]
+  if (!poi) return
+  ui.selectedPoiId = null
+  ui.selectedSegmentId = null
+  mapRef.value?.focusPoi(poi)
+}
 function onPickPoi(poi: POI) {
   trip.addPoi(poi)
   onSelectPoi(poi.id)
 }
 function onSearchPoi(poi: POI) {
   if (!activeTrip.value) return
+  // O05：若来自「插入经停」，把该点插进段的两端之间，而不是追加到日末
+  if (pendingInsertSegId.value) {
+    const sid = pendingInsertSegId.value
+    pendingInsertSegId.value = null
+    const ok = trip.insertStopAfter(sid, poi)
+    ui.toast(ok ? `已把「${poi.name}」插为经停，路线已重连` : '插入失败，请重试')
+    return
+  }
   const existed = trip.inDays(poi.id)
   if (existed.includes(dayIndex.value)) {
     trip.addPoi(poi)
@@ -130,6 +156,38 @@ function onSelectSegment(id: string) {
   ui.selectedSegmentId = id
   ui.selectedPoiId = null
   ui.openModal('route')
+}
+/** L02：新增城际段——段挂在到达日，默认出发城取上一天主城 */
+function onAddLeg() {
+  const days = activeTrip.value?.days || []
+  const prev = days.find(d => d.dayIndex === dayIndex.value - 1)
+  const defaultFrom = prev?.city || days[0]?.city || ''
+  ui.openModal('leg', { defaultFrom })
+}
+/** L02：编辑既有城际段 */
+function onEditLeg(id: string) {
+  ui.openModal('leg', { legId: id })
+}
+/** L02：保存城际段（新建或更新），统一撤销栈已由 store 处理 */
+function onSaveLeg(data: Omit<Leg, 'id'>) {
+  const editing = editingLeg.value
+  if (editing) trip.updateLeg(editing.id, data)
+  else trip.addLeg(data, dayIndex.value)
+  ui.closeModal()
+  ui.toast(editing ? '城际段已更新' : `已增设城际段 · ${data.fromCity}→${data.toCity}`)
+}
+/** L02：删除城际段 */
+function onDeleteLeg(id: string) {
+  trip.removeLeg(id)
+  ui.closeModal()
+  ui.toast('已删除城际段', '撤销', () => { const m = trip.undo(); if (m) ui.toast(m) })
+}
+/** O05：从交通条发起「插入经停」，拉起搜索框等待选点 */
+function onInsertStop(id: string) {
+  pendingInsertSegId.value = id
+  ui.closeModal()
+  poiSearchRef.value?.focus()
+  ui.toast('选一处地点，插到这段的两点之间')
 }
 async function onMapClick(location: LngLat) {
   customLocation.value = location
@@ -171,9 +229,8 @@ function clearStrokes() {
 function restoreAnnotations() {
   const strokes = activeTrip.value?.annotations || []
   if (!strokes.length) return
-  // screenPoints 在落笔时被写成 lng/lat 占位；优先还原地理点经 MapCanvas 再投影不稳，先用已存 screenPoints 形状
-  const pts = strokes.map(s => (s.screenPoints || []).map(p => ({ x: p.x, y: p.y })))
-  if (pts.some(p => p.length > 1)) mapRef.value?.redrawAnnotations?.(pts)
+  // D98：批注以地理真值持久化，交给 MapCanvas 按当前视野投影还原
+  mapRef.value?.loadPersisted?.(strokes)
 }
 function archiveCurrent() {
   if (!activeTrip.value) return
@@ -211,14 +268,26 @@ function openMapDrawer(kind: 'itinerary' | 'expense' | 'today' | 'wishlist') {
     <AppHeader :trip="activeTrip" @edit="editTitle" />
 
     <div class="flex-1 min-h-0 flex">
+      <!-- O10：左工作台折叠条 -->
+      <aside v-if="ui.studioCollapsed" class="hidden lg:flex w-9 shrink-0 flex-col items-center studio-panel py-3">
+        <button class="w-7 h-7 flex items-center justify-center border border-ink/20 text-inkLight hover:text-cinnabar hover:border-cinnabar/50" title="展开工作台" @click="ui.studioCollapsed = false">
+          <ChevronRight :size="15" />
+        </button>
+        <span class="vertical-text font-cn text-[9px] tracking-widest text-inkLight/70 mt-3">展工作台</span>
+      </aside>
       <!-- 桌面左工作台：搜索、日签、当日行程、智能建议，全部在布局内 -->
-      <aside class="hidden lg:flex w-[388px] shrink-0 flex-col studio-panel">
-        <div class="px-3 pt-3 pb-2.5 border-b border-ink/15 shrink-0">
-          <PoiSearch :city="currentCity" @select="onSearchPoi" @custom-request="onMapClick" />
+      <aside v-else class="hidden lg:flex w-[388px] shrink-0 flex-col studio-panel">
+        <div class="flex justify-end px-3 pt-2 shrink-0">
+          <button class="inline-flex items-center gap-1 font-cn text-[9px] text-inkLight/70 hover:text-cinnabar" title="收起工作台，给地图让位" @click="ui.studioCollapsed = true">
+            <ChevronLeft :size="12" /> 收起工作台
+          </button>
+        </div>
+        <div class="px-3 pt-1.5 pb-2.5 border-b border-ink/15 shrink-0">
+          <PoiSearch ref="poiSearchRef" :city="currentCity" @select="onSearchPoi" @custom-request="onMapClick" />
         </div>
         <div class="flex-1 min-h-0 flex flex-col">
           <DayRail />
-          <DayPanel class="flex-1 min-h-0" :day-index="dayIndex" @select-poi="onSelectPoi" @select-segment="onSelectSegment" />
+          <DayPanel class="flex-1 min-h-0" :day-index="dayIndex" @select-poi="onSelectPoi" @focus-poi="onFocusPoi" @select-segment="onSelectSegment" @insert-stop="onInsertStop" @add-leg="onAddLeg" @edit-leg="onEditLeg" />
           <SmartAssist class="max-h-[188px] overflow-y-auto border-t border-ink/15 shrink-0" :day-index="dayIndex" />
         </div>
       </aside>
@@ -264,7 +333,7 @@ function openMapDrawer(kind: 'itinerary' | 'expense' | 'today' | 'wishlist') {
         <div class="lg:hidden shrink-0 border-b border-ink/15 bg-paper/95">
           <DayRail />
           <div class="px-3 py-2">
-            <PoiSearch :city="currentCity" @select="onSearchPoi" @custom-request="onMapClick" />
+            <PoiSearch ref="poiSearchRef" :city="currentCity" @select="onSearchPoi" @custom-request="onMapClick" />
           </div>
         </div>
 
@@ -286,6 +355,7 @@ function openMapDrawer(kind: 'itinerary' | 'expense' | 'today' | 'wishlist') {
             @select-poi="onSelectPoi"
             @pick-poi="onPickPoi"
             @select-segment="onSelectSegment"
+            @select-leg="onEditLeg"
             @map-click="onMapClick"
             @add-stroke="onStroke"
           />
@@ -329,15 +399,18 @@ function openMapDrawer(kind: 'itinerary' | 'expense' | 'today' | 'wishlist') {
         <!-- 移动端底部抽屉：参与 flex 布局，地图自动让位 -->
         <div class="lg:hidden shrink-0 border-t border-ink/20 bg-paper/98 shadow-[0_-10px_30px_-20px_rgba(38,35,31,.55)] transition-[height] duration-300 ease-out" :class="sheetHeight" :data-sheet="ui.sheet">
           <button
-            class="w-full h-7 flex items-center justify-center text-inkLight/50 touch-none"
+            class="w-full h-7 flex flex-col items-center justify-center gap-0.5 text-inkLight/50 touch-none"
+            title="上拉展开 · 点按切换三档"
             @click="cycleSheet"
             @pointerdown="onSheetPointerDown"
             @pointermove="onSheetPointerMove"
             @pointerup="onSheetPointerUp"
             @pointercancel="onSheetPointerUp"
           >
-            <ChevronUp v-if="ui.sheet !== 'full'" :size="15" />
-            <ChevronDown v-else :size="15" />
+            <!-- O13：可拖动手柄 -->
+            <span class="w-8 h-1 rounded-full bg-ink/20"></span>
+            <ChevronUp v-if="ui.sheet !== 'full'" :size="13" />
+            <ChevronDown v-else :size="13" />
           </button>
           <div class="flex border-y border-ink/12">
             <button v-for="tab in [
@@ -356,8 +429,8 @@ function openMapDrawer(kind: 'itinerary' | 'expense' | 'today' | 'wishlist') {
             </button>
           </div>
           <div v-if="ui.sheet !== 'peek'" class="h-[calc(100%-72px)] overflow-y-auto drawer-scroll p-3">
-            <DayPanel v-if="ui.drawer === 'itinerary'" :day-index="dayIndex" @select-poi="onSelectPoi" @select-segment="onSelectSegment" />
-            <TodayView v-else-if="ui.drawer === 'today'" :day-index="dayIndex" @close="ui.closeDrawer()" />
+            <DayPanel v-if="ui.drawer === 'itinerary'" :day-index="dayIndex" @select-poi="onSelectPoi" @focus-poi="onFocusPoi" @select-segment="onSelectSegment" @insert-stop="onInsertStop" @add-leg="onAddLeg" @edit-leg="onEditLeg" />
+            <TodayView v-else-if="ui.drawer === 'today'" :day-index="dayIndex" @focus-poi="onFocusPoi" @close="ui.closeDrawer()" />
             <ExpenseDrawer v-else-if="ui.drawer === 'expense'" :day-index="dayIndex" @close="ui.closeDrawer()" />
             <WishlistPanel v-else-if="ui.drawer === 'wishlist'" @close="ui.closeDrawer()" />
             <SmartAssist v-else-if="ui.drawer === 'assist'" :day-index="dayIndex" />
@@ -372,13 +445,25 @@ function openMapDrawer(kind: 'itinerary' | 'expense' | 'today' | 'wishlist') {
         </div>
       </main>
 
+      <!-- O10：右 inspector 折叠条 -->
+      <aside v-if="ui.inspectorCollapsed" class="hidden lg:flex w-9 shrink-0 flex-col items-center inspector-panel py-3">
+        <button class="w-7 h-7 flex items-center justify-center border border-ink/20 text-inkLight hover:text-cinnabar hover:border-cinnabar/50" title="展开卷轴" @click="ui.inspectorCollapsed = false">
+          <ChevronLeft :size="15" />
+        </button>
+        <span class="vertical-text font-cn text-[9px] tracking-widest text-inkLight/70 mt-3">展卷轴</span>
+      </aside>
       <!-- 桌面右 inspector：参与布局，打开时地图自动变窄，不覆盖 -->
       <Transition name="slide">
-        <aside v-if="ui.drawer" class="hidden lg:flex w-[360px] shrink-0 relative flex-col inspector-panel">
+        <aside v-if="ui.drawer && !ui.inspectorCollapsed" class="hidden lg:flex w-[360px] shrink-0 relative flex-col inspector-panel">
+          <div class="absolute top-1.5 right-2 z-50">
+            <button class="inline-flex items-center gap-0.5 font-cn text-[9px] text-inkLight/70 hover:text-cinnabar px-1" title="收起卷轴，给地图让位" @click="ui.inspectorCollapsed = true">
+              收起 <ChevronRight :size="11" />
+            </button>
+          </div>
           <div class="relative flex-1 min-h-0">
-            <ItineraryDrawer v-if="ui.drawer === 'itinerary'" :day-index="dayIndex" @close="ui.closeDrawer()" />
+            <ItineraryDrawer v-if="ui.drawer === 'itinerary'" :day-index="dayIndex" @focus-poi="onFocusPoi" @select-poi="onSelectPoi" @close="ui.closeDrawer()" />
             <ExpenseDrawer v-else-if="ui.drawer === 'expense'" :day-index="dayIndex" @close="ui.closeDrawer()" />
-            <TodayView v-else-if="ui.drawer === 'today'" :day-index="dayIndex" @close="ui.closeDrawer()" />
+            <TodayView v-else-if="ui.drawer === 'today'" :day-index="dayIndex" @focus-poi="onFocusPoi" @close="ui.closeDrawer()" />
             <WishlistPanel v-else-if="ui.drawer === 'wishlist'" @close="ui.closeDrawer()" />
           </div>
         </aside>
@@ -409,7 +494,24 @@ function openMapDrawer(kind: 'itinerary' | 'expense' | 'today' | 'wishlist') {
 
     <!-- 弹层 -->
     <div v-if="selectedSegment && ui.modal === 'route'" class="fixed inset-0 z-[200] flex items-center justify-center bg-ink/35 p-4" @click.self="ui.closeModal()">
-      <SegmentPicker :segment="selectedSegment" @choose="mode => { trip.setSegmentMode(dayIndex, selectedSegment!.id, mode); ui.closeModal(); ui.toast('交通方式已更新，地图与时刻已重算') }" @close="ui.closeModal()" />
+      <SegmentPicker
+        :segment="selectedSegment"
+        @choose="mode => { trip.setSegmentMode(dayIndex, selectedSegment!.id, mode); ui.closeModal(); ui.toast('交通方式已更新，地图与时刻已重算') }"
+        @pin="pinned => { trip.setSegmentPinned(selectedSegment!.id, pinned); ui.toast(pinned ? '已固定此走法' : '已取消固定') }"
+        @close="ui.closeModal()"
+      />
+    </div>
+
+    <!-- L02/L04：城际段编辑弹层 -->
+    <div v-if="ui.modal === 'leg'" class="fixed inset-0 z-[200] flex items-center justify-center bg-ink/40 p-4" @click.self="ui.closeModal()">
+      <LegEditor
+        :leg="editingLeg"
+        :day-index="dayIndex"
+        :default-from="legEditorDefaultFrom"
+        @save="onSaveLeg"
+        @delete="onDeleteLeg"
+        @close="ui.closeModal()"
+      />
     </div>
 
     <div v-if="ui.modal === 'customPoi'" class="fixed inset-0 z-[200] flex items-center justify-center bg-ink/40 p-4" @click.self="ui.closeModal()">

@@ -84,6 +84,13 @@ function choose(poi: POI) {
   emit('select', poi)
 }
 
+/** 供父级在「插入经停」等场景下主动拉起搜索框 */
+function focus() {
+  expanded.value = true
+  window.setTimeout(() => inputEl.value?.focus(), 0)
+}
+defineExpose({ focus })
+
 /** 自定义地点：以城市中心附近随机点触发，由父级接管命名与入库 */
 function customRequest() {
   const center = cityStore.findCity(props.city)?.center

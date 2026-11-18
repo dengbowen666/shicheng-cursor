@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
-import { useRouter } from 'vue-router'
 import { useCityStore } from '../../stores/city'
 import { useTripStore } from '../../stores/trip'
 import { useUiStore } from '../../stores/ui'
@@ -13,7 +12,6 @@ const emit = defineEmits<{
   created: [tripId: string]
 }>()
 
-const router = useRouter()
 const cityStore = useCityStore()
 const trip = useTripStore()
 const ui = useUiStore()
@@ -24,6 +22,7 @@ const HOT_NAMES = ['大理', '丽江', '北京', '成都', '杭州', '西安', '
 const keyword = ref('')
 const selectedCity = ref<City | null>(null)
 const days = ref(3)
+const startDate = ref('')
 const budget = ref<number | undefined>(undefined)
 const sealText = ref(SEALS[Math.floor(Math.random() * SEALS.length)])
 const title = ref('')
@@ -67,10 +66,10 @@ function create() {
     title: title.value || undefined,
     budget: budget.value,
     sealText: sealText.value.slice(0, 2),
+    startDate: startDate.value || undefined,
   })
   emit('created', t.id)
   emit('close')
-  void router.push(`/trip/${t.id}`)
 }
 </script>
 
@@ -138,17 +137,27 @@ function create() {
             </div>
           </div>
 
+          <!-- 启程日期 -->
+          <div>
+            <label class="font-cn text-xs text-cinnabar tracking-widest">三 · 启程日期（选填）</label>
+            <div class="mt-2 flex items-center gap-2 h-9 px-2.5 bg-mist border border-ink/25 focus-within:border-cyanq">
+              <input v-model="startDate" type="date" class="flex-1 min-w-0 bg-transparent outline-none font-num text-sm text-ink" />
+              <button v-if="startDate" class="font-cn text-[10px] text-inkLight hover:text-cinnabar shrink-0" @click="startDate = ''">清除</button>
+            </div>
+            <p class="mt-1 font-cn text-[10px] text-inkLight/80">留空则记为「未定日期」，之后仍可补填</p>
+          </div>
+
           <!-- 预算 + 闲章 -->
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label class="font-cn text-xs text-cinnabar tracking-widest">三 · 预算（选填）</label>
+              <label class="font-cn text-xs text-cinnabar tracking-widest">四 · 预算（选填）</label>
               <div class="mt-2 flex items-center gap-2 h-9 px-2.5 bg-mist border border-ink/25 focus-within:border-cyanq">
                 <span class="font-num text-inkLight">¥</span>
                 <input v-model.number="budget" type="number" min="0" placeholder="如 3000" class="flex-1 min-w-0 bg-transparent outline-none font-num text-sm text-ink" />
               </div>
             </div>
             <div>
-              <label class="font-cn text-xs text-cinnabar tracking-widest">四 · 自刻闲章（两字）</label>
+              <label class="font-cn text-xs text-cinnabar tracking-widest">五 · 自刻闲章（两字）</label>
               <div class="mt-2 flex items-center gap-2">
                 <input v-model="sealText" maxlength="2"
                   class="w-16 h-10 text-center bg-cinnabar text-mist font-brush text-lg border-0 outline-none seal" />

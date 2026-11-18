@@ -13,7 +13,7 @@ import { useWeatherStore } from '../../stores/weather'
 import { deriveDay } from '../../lib/timeline'
 
 const props = defineProps<{ dayIndex: number }>()
-const emit = defineEmits<{ close: [] }>()
+const emit = defineEmits<{ close: []; 'focus-poi': [id: string] }>()
 
 const trip = useTripStore()
 const ui = useUiStore()
@@ -235,7 +235,7 @@ const forecast = computed(() => weather.forDate(day.value?.city || '', day.value
           <div v-for="(p, i) in stops" :key="p.id" class="flex items-center gap-2 paper-card px-3 py-2">
             <span class="font-num text-xs text-inkLight w-5 shrink-0">{{ String(i + 1).padStart(2, '0') }}</span>
             <div class="min-w-0 flex-1">
-              <p class="font-cn text-xs text-ink truncate">{{ p.name }}</p>
+              <button class="block w-full text-left font-cn text-xs text-ink truncate hover:text-cinnabar" :title="`在地图上聚焦 ${p.name}`" @click="emit('focus-poi', p.id)">{{ p.name }}</button>
               <p class="font-num text-[10px] text-inkLight">约 {{ arriveMap.get(p.id) || '—' }} 抵达</p>
             </div>
             <span v-if="p.visitedAt" class="seal seal-stamp w-12 h-8 text-[10px] shrink-0 flex-col leading-none">

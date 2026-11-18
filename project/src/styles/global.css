@@ -165,7 +165,7 @@ body.paper-rain { --paper: #EDF0EB; }
 @keyframes markerAppear { from { opacity: 0; } to { opacity: 1; } }
 
 /* 移动端 bottom sheet 三档 */
-.sheet-peek { height: 72px; }
+.sheet-peek { height: 76px; }
 .sheet-half { height: 45vh; }
 .sheet-full { height: 92vh; }
 
@@ -225,15 +225,15 @@ body.paper-rain { --paper: #EDF0EB; }
   box-shadow: inset 0 0 90px rgba(38,35,31,.10), inset 0 0 18px rgba(38,35,31,.06);
 }
 
-/* 真实瓦片上的纸色：轻滤镜，路网建筑必须可辨，不再乘算示意山海 */
+/* 真实瓦片上的纸色（O11）：提高对比、减轻罩色，保证街巷可辨，同时保持宣纸调 */
 .gl-paper {
-  filter: saturate(.62) brightness(1.04) contrast(1.04) sepia(.10);
+  filter: saturate(.72) brightness(1.02) contrast(1.12) sepia(.08);
 }
 .gl-wash {
   background:
     radial-gradient(ellipse 92% 78% at 28% 22%, rgba(250, 244, 230, 0.35) 0%, transparent 58%),
     var(--paper, #F2ECE0);
-  opacity: .28;
+  opacity: .18;
   mix-blend-mode: color;
 }
 .gl-mist {
