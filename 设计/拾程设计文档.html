@@ -1,0 +1,1688 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>拾程 · 国风旅行地图攻略编辑器 设计文档（v4.5）</title>
+<style>
+/* ========== Reset & Base（mode-doc 骨架 · 暖金调色板 warm-gold） ========== */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { min-height: 100%; }
+body {
+  position: relative;
+  font-family: -apple-system, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Segoe UI", "Noto Sans SC", sans-serif;
+  color: #3d3225;
+  line-height: 1.7;
+  -webkit-font-smoothing: antialiased;
+  max-width: 820px;
+  margin: 0 auto;
+  padding: 40px 24px;
+  background: linear-gradient(160deg, #fbf8f1 0%, #ffffff 45%, #eed3a8 100%);
+  min-height: 100vh;
+}
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse 45% 35% at 12% 8%, rgba(255,255,255,0.55) 0%, transparent 60%),
+    radial-gradient(ellipse 40% 30% at 88% 90%, rgba(255,255,255,0.45) 0%, transparent 55%);
+}
+body > * { position: relative; z-index: 1; }
+
+/* ========== 封面 Hero ========== */
+.title {
+  position: relative;
+  overflow: hidden;
+  padding: 56px 40px;
+  text-align: center;
+  background: linear-gradient(135deg, #b08f47 0%, #d4a94e 50%, #e8cc76 100%);
+  color: #ffffff;
+  border-radius: 16px;
+  margin-bottom: 24px;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.12);
+}
+.title::before {
+  content: '';
+  position: absolute; inset: 0;
+  background:
+    radial-gradient(ellipse 70% 55% at 18% 82%, rgba(255,255,255,0.12) 0%, transparent 60%),
+    radial-gradient(ellipse 55% 40% at 82% 18%, rgba(255,255,255,0.08) 0%, transparent 55%);
+  pointer-events: none;
+}
+.title > * { position: relative; z-index: 1; }
+.title h1 { font-size: 28px; font-weight: 800; margin: 0 0 14px 0; letter-spacing: 1px; color: #ffffff; }
+.title .accent-line { width: 48px; height: 3px; background: rgba(255,255,255,0.85); margin: 0 auto 18px; border-radius: 2px; }
+.title p { font-size: 15px; color: rgba(255,255,255,0.85); margin: 0; line-height: 1.7; }
+.title .seal {
+  display: inline-block; vertical-align: middle; margin-left: 10px;
+  width: 34px; height: 34px; line-height: 34px; text-align: center;
+  background: #a64834; color: #fdf6e3; border-radius: 4px;
+  font-size: 13px; font-weight: 700; letter-spacing: 0;
+  box-shadow: 0 0 0 2px rgba(255,255,255,0.4);
+  font-family: "KaiTi", "STKaiti", serif;
+}
+
+/* ========== 章节标题 ========== */
+h1.heading {
+  font-size: 28px;
+  color: #5d4a1e;
+  margin: 36px 0 16px 0;
+  font-weight: 700;
+  border-left: 4px solid #c9991f;
+  padding-left: 16px;
+}
+h2.heading {
+  font-size: 22px;
+  color: #5d4a1e;
+  margin: 28px 0 12px;
+  padding-bottom: 8px;
+  border-bottom: 2px solid #ecd5a2;
+  font-weight: 600;
+}
+h3.heading { font-size: 18px; color: #473817; margin: 20px 0 10px; font-weight: 600; }
+
+/* ========== 正文 / 列表 ========== */
+.paragraph { font-size: 15px; color: #3d3225; line-height: 1.8; margin: 0 0 16px 0; text-indent: 2em; }
+.paragraph.noindent { text-indent: 0; }
+.list { margin: 0 0 16px 0; padding-left: 24px; font-size: 15px; color: #3d3225; line-height: 1.8; }
+.list li { margin-bottom: 8px; }
+.list li::marker { color: #c9991f; }
+
+/* ========== 正文区卡片化容器 ========== */
+.doc-section {
+  background: #ffffff;
+  border-radius: 14px;
+  padding: 24px 28px;
+  margin: 0 0 16px 0;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.05);
+}
+.doc-section.alt { background: #f3ecdc; box-shadow: none; }
+
+/* ========== callout ========== */
+.callout {
+  margin: 0 0 16px 0;
+  padding: 16px 24px;
+  background: #faf0d5;
+  border-left: 4px solid #c9991f;
+  border-radius: 8px;
+}
+.callout[data-variant="warning"] { background: #FFF3E0; border-left-color: #d97706; }
+.callout[data-variant="quote"]   { background: #f0fdfa; border-left-color: #14b8a6; }
+.callout p { font-size: 15px; color: #3d3225; margin: 0; line-height: 1.8; text-indent: 0; }
+.callout p + p { margin-top: 8px; }
+
+/* ========== 表格 ========== */
+.table-wrap {
+  background: #ffffff;
+  border-radius: 12px;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.05);
+  overflow: hidden;
+  margin: 0 0 16px 0;
+}
+.table-caption {
+  padding: 12px 16px;
+  background: linear-gradient(135deg, #ecd5a2, #faf0d5);
+  color: #5d4a1e;
+  font-size: 14px;
+  font-weight: 600;
+  text-align: center;
+  border-bottom: 1px solid #e8dcbf;
+}
+table.table { width: 100%; border-collapse: collapse; font-size: 14px; table-layout: fixed; }
+table.table thead th {
+  padding: 10px 12px;
+  text-align: left;
+  background: #ecd5a2;
+  color: #5d4a1e;
+  font-weight: 700;
+  border-bottom: 2px solid #e8dcbf;
+  word-break: break-word;
+}
+table.table tbody td { padding: 10px 12px; border-bottom: 1px solid #e8dcbf; color: #3d3225; word-break: break-word; line-height: 1.7; }
+table.table tbody tr:last-child td { border-bottom: none; }
+table.table tbody tr:hover { background: #faf0d5; }
+table.table td.dno, table.table th.dno { text-align: center; font-weight: 700; color: #a37d14; }
+
+/* ========== 引用与来源 ========== */
+.cite {
+  font-size: 11px; color: #c9991f; font-weight: 600; vertical-align: super;
+  margin-left: 2px; text-decoration: none; cursor: pointer;
+}
+.cite:hover { color: #5d4a1e; text-decoration: underline; }
+.source-list { margin: 0 0 16px 0; }
+.source-list ol { padding-left: 20px; font-size: 13px; color: #6b5e50; line-height: 2.0; }
+.source-list ol li { margin-bottom: 6px; }
+.source-list ol li strong { color: #5d4a1e; }
+.source-list .src-id { display: inline-block; width: 24px; font-weight: 700; color: #c9991f; }
+.source-list .source-link { color: #a37d14; text-decoration: none; border-bottom: 1px solid rgba(201,153,31,0.35); }
+.source-list .source-link:hover { color: #473817; border-bottom-color: #473817; }
+
+/* ========== stat / timeline / code / card / divider / 尾页 ========== */
+.stat-grid { display: flex; gap: 16px; margin: 0 0 16px 0; }
+.stat {
+  flex: 1; text-align: center; padding: 24px;
+  background: #ffffff; border-radius: 12px; box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+  border-top: 3px solid #c9991f;
+}
+.stat .num { font-size: 28px; color: #a37d14; font-weight: 800; line-height: 1.1; }
+.stat .label { font-size: 12px; color: #6b5e50; margin-top: 6px; }
+.timeline { list-style: none; padding: 0; margin: 0 0 16px 0; }
+.timeline li {
+  position: relative; padding-left: 28px; padding-bottom: 18px;
+  border-left: 2px solid #ecd5a2; margin-left: 6px;
+}
+.timeline li:last-child { border-left-color: transparent; padding-bottom: 0; }
+.timeline li::before {
+  content: ''; position: absolute; left: -7px; top: 5px;
+  width: 12px; height: 12px; border-radius: 50%;
+  background: #c9991f; border: 2px solid #fbf8f1;
+  box-shadow: 0 0 0 2px #faf0d5;
+}
+.timeline strong { font-size: 14px; color: #a37d14; }
+.timeline p { font-size: 15px; color: #3d3225; margin: 4px 0 0 0; line-height: 1.8; }
+.code {
+  background: #1e293b; color: #e2e8f0;
+  padding: 16px 24px; border-radius: 8px;
+  font-size: 13.5px; line-height: 1.6;
+  overflow-x: auto; margin: 0 0 16px 0;
+  font-family: 'Cascadia Code', 'Fira Code', 'SF Mono', 'Source Code Pro', Consolas, monospace;
+}
+.code code { font-family: inherit; }
+.card-grid { display: flex; gap: 16px; margin: 0 0 16px 0; }
+.card {
+  flex: 1; background: #ffffff; padding: 24px;
+  border-radius: 12px; box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+  border-top: 3px solid #c9991f;
+}
+.card h3 { font-size: 18px; color: #5d4a1e; margin: 0 0 8px 0; font-weight: 700; }
+.card p  { font-size: 14px; color: #6b5e50; margin: 0; line-height: 1.7; }
+.divider { margin: 32px 0; text-align: center; user-select: none; }
+.divider .line { display: inline-block; width: 36px; height: 1px; vertical-align: middle; background: linear-gradient(to right, transparent, #faf0d5); }
+.divider .line:last-child { background: linear-gradient(to left, transparent, #faf0d5); }
+.divider .diamond {
+  display: inline-block; width: 8px; height: 8px; margin: 0 12px; vertical-align: middle;
+  transform: rotate(45deg); background: #c9991f; border-radius: 1px;
+  box-shadow: 0 0 0 2px #fbf8f1;
+}
+.end_page {
+  margin-top: 24px; padding: 56px 24px; text-align: center;
+  background: linear-gradient(135deg, #ecd5a2 0%, #faf0d5 100%);
+  border-radius: 16px;
+}
+.end_page h1 { font-size: 28px; color: #5d4a1e; margin: 0 0 16px 0; font-weight: 800; }
+.end_page p  { font-size: 15px; color: #6b5e50; margin: 0; line-height: 1.8; }
+
+/* ========== 文档自定义：目录 / 色板样块 / 徽章 / 版本徽标 ========== */
+.toc {
+  background: #ffffff; border-radius: 14px; padding: 20px 28px;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.05); margin: 0 0 16px 0;
+}
+.toc h2 { font-size: 18px; color: #5d4a1e; margin: 0 0 12px 0; font-weight: 700; }
+.toc ol { padding-left: 20px; font-size: 14px; line-height: 2.1; color: #3d3225; }
+.toc ol li::marker { color: #c9991f; font-weight: 700; }
+.toc a { color: #473817; text-decoration: none; border-bottom: 1px dashed #ecd5a2; }
+.toc a:hover { color: #a37d14; border-bottom-color: #a37d14; }
+.badge {
+  display: inline-block; padding: 1px 10px; border-radius: 20px;
+  font-size: 12px; line-height: 1.8; vertical-align: middle;
+  background: #faf0d5; color: #a37d14; border: 1px solid #ecd5a2; white-space: nowrap;
+}
+.badge.red { background: #FCE4EC; color: #A64834; border-color: #e8c7bd; }
+.badge.green { background: #E8F5E9; color: #2E7D32; border-color: #cde8d0; }
+.swatch-row { display: flex; flex-wrap: wrap; gap: 12px; margin: 0 0 16px 0; }
+.swatch {
+  flex: 1; min-width: 150px; background: #ffffff; border: 1px solid #e8dcbf;
+  border-radius: 10px; overflow: hidden; box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+}
+.swatch .chip { height: 52px; }
+.swatch .info { padding: 8px 12px; font-size: 12px; color: #6b5e50; line-height: 1.6; }
+.swatch .info b { display: block; color: #473817; font-size: 13px; }
+.wire { width: 100%; background: #ffffff; border: 1px solid #e8dcbf; border-radius: 10px; }
+.kbd {
+  display: inline-block; padding: 0 6px; border: 1px solid #e8dcbf; border-bottom-width: 2px;
+  border-radius: 4px; background: #fbf8f1; font-size: 12px; color: #473817;
+  font-family: Consolas, monospace; line-height: 1.7;
+}
+
+/* ========== 响应式 ========== */
+@media screen and (max-width: 600px) {
+  body { padding: 16px !important; }
+  h1 { font-size: 22px !important; }
+  h2 { font-size: 18px !important; }
+  h3 { font-size: 16px !important; }
+  .stat-grid, .card-grid { flex-direction: column; }
+  .swatch { min-width: 120px; }
+}
+
+/* ========== 打印优化 ========== */
+@media print {
+  body {
+    padding: 0 !important; margin: 0 !important; background: #faf7ef;
+    -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important;
+  }
+  body::before { display: none; }
+  .title, .end_page { border-radius: 0; box-shadow: none; }
+  .doc-section, .card, .stat, .table-wrap, .toc { box-shadow: none; border: 1px solid #e8dcbf; }
+  section { break-inside: auto !important; }
+}
+</style>
+</head>
+<body class="mode-doc" data-palette="warm-gold">
+
+<!-- ===== 封面 ===== -->
+<section class="title">
+  <h1>拾程 · 国风旅行地图攻略编辑器<span class="seal">拾程</span></h1>
+  <div class="accent-line"></div>
+  <p>设计文档 · v4.4（v4 定案 + D54 动效库 + D55–D59 行迹与动效 + D60–D62 一图一轴 + D63–D68 首页气韵）<br>
+  搜全国任一城市 · 自编辑做攻略 · 打车小车与步行脚印上地图 · 宋韵雅致国风<br>
+  Vue 3 + Pinia + 腾讯地图 · 高保真交互原型 · 仅自用 · EdgeOne Pages 部署</p>
+</section>
+
+<!-- ===== 文档信息 ===== -->
+<h1 class="heading" id="sec-0">零 · 文档信息与阅读指引</h1>
+<div class="doc-section">
+  <p class="paragraph noindent"><span class="badge">状态</span> 需求与设计已收口，<b>主链路已落地（v4.6）</b>，剩余见附录 12.5。本文档由 2026-11-17 与用户的多轮需求讨论固化而成，是「拾程」项目的<b>唯一设计基准</b>：后续开发中若与本记忆冲突，以本文档为准；若需变更，先改文档再改代码（D90）。</p>
+  <table class="table" data-caption="文档信息">
+    <colgroup><col style="width:16%"><col style="width:44%"><col style="width:40%"></colgroup>
+    <thead><tr><th>字段</th><th>内容</th><th>说明</th></tr></thead>
+    <tbody>
+      <tr><td>版本</td><td>v4.6（在 v4.5 之上完成一图一轴/行迹/气韵落地 + D81–D90 体验与动效补强；演革见附录 12.3，核查见附录 12.4 / 12.5）</td><td>设计与代码同步迭代中</td></tr>
+      <tr><td>日期</td><td>2026-11-17</td><td>讨论定稿日；v4.6 同日实施追认</td></tr>
+      <tr><td>产物形态</td><td>高保真可点击交互原型（视觉完整、可操作）</td><td>非纯文档、非生产级全栈系统</td></tr>
+      <tr><td>使用对象</td><td>仅用户本人使用</td><td>无账号体系，无多人协作</td></tr>
+      <tr><td>决策总量</td><td>91 项已确认决策（第二章总账 D01–D91）</td><td>每项均经用户当面确认、采用推荐项或实施追认</td></tr>
+    </tbody>
+  </table>
+  <div class="stat-grid" data-cols="4">
+    <div class="stat"><div class="num">91</div><div class="label">已确认决策</div></div>
+    <div class="stat"><div class="num">17</div><div class="label">功能模块规格</div></div>
+    <div class="stat"><div class="num">13</div><div class="label">实施阶段（Phase 0–12）</div></div>
+    <div class="stat"><div class="num">0</div><div class="label">后端依赖（纯静态）</div></div>
+  </div>
+</div>
+<aside class="callout" data-variant="tip">
+  <p><b>开发阅读路径建议：</b>先读第一章（定位）与第三章（用户旅程）建立心智模型 → 第四章（功能规格）与第五章（视觉规范）按模块开发时逐节对照 → 第六章（技术架构）落地脚手架时通读 → 第八章（阶段计划）驱动排期。第二章决策总账用于开发中快速回查「当初为什么这么做」。</p>
+</aside>
+
+<!-- ===== 目录 ===== -->
+<div class="toc">
+  <h2>目 录</h2>
+  <ol class="list">
+    <li><a href="#sec-1">一、产品定位：拾程是什么</a></li>
+    <li><a href="#sec-2">二、需求决策总账（D01–D90）</a></li>
+    <li><a href="#sec-3">三、用户旅程与使用场景</a></li>
+    <li><a href="#sec-4">四、功能规格详述</a></li>
+    <li><a href="#sec-5">五、视觉设计规范（宋韵雅致）</a></li>
+    <li><a href="#sec-6">六、技术架构</a></li>
+    <li><a href="#sec-7">七、种子数据与外部接口</a></li>
+    <li><a href="#sec-8">八、实施阶段（Phase 0–11）</a></li>
+    <li><a href="#sec-9">九、验收标准</a></li>
+    <li><a href="#sec-10">十、风险与应对</a></li>
+    <li><a href="#sec-11">十一、明确不做清单</a></li>
+    <li><a href="#sec-12">十二、附录</a></li>
+  </ol>
+</div>
+
+<!-- ===== 一、产品定位 ===== -->
+<h1 class="heading" id="sec-1">一、产品定位：拾程是什么</h1>
+
+<h2 class="heading">1.1 一句话定位</h2>
+<div class="doc-section">
+  <p class="paragraph noindent"><b>「拾程」是一个国风水墨风格的全国旅行攻略编辑器：</b>在水墨中国地图上搜到你想去的任一城市，下钻进城市地图，自己挑景点、订住宿、逐段选交通方式——打车段地图上跑小车、步行段画脚印；出发前拆锦囊，路上「该出发了」会催你、每到一处盖一枚「已至」朱砂印；回来导出一幅国风长卷。攻略全程存于本机浏览器，一人一世界。</p>
+  <p class="paragraph">站名<b>「拾程」</b>谐音「时辰」——把一段段时辰拾进画卷；印章形制的站标以朱砂印文「拾程」呈现，用于顶栏、加载态、导出落款三处。</p>
+</div>
+
+<h2 class="heading">1.2 三条命的旅程模型（产品骨架）</h2>
+<div class="doc-section">
+  <p class="paragraph noindent">拾程的整个信息架构围绕攻略的<b>「三条命」</b>组织——这是比功能列表更本质的产品骨架，所有模块都挂在这三条命上：</p>
+  <div class="card-grid" data-cols="3">
+    <div class="card">
+      <h3>① 做之前 · 编辑器</h3>
+      <p>逛城市攒心愿（收藏池）→ 排日程（分日/拖拽/驻地）→ 连线选交通（小车/脚印/公交/骑行）→ 智能辅助与时间推算 → 朱笔批注圈画。占产品约 60% 的分量，是核心。</p>
+    </div>
+    <div class="card">
+      <h3>② 走之中 · 今天视图</h3>
+      <p>出行当天打开：行前锦囊拆封 → 按时间自动推进 → 「该出发了」朱砂催促 → 一键唤起腾讯地图导航 → 每到一处盖「已至」印 → 随手记账、雨备换点。</p>
+    </div>
+    <div class="card">
+      <h3>③ 回来后 · 回顾与沉淀</h3>
+      <p>忆游回顾（印章分布+花费曲线+题跋集）、归档「已行卷」、首页城市印记盖「行」字、导出长卷与打印版、全程回放彩蛋；此后随时可切首页「行迹」态，历次行脚汇于一图（4.17）。</p>
+    </div>
+  </div>
+  <p class="paragraph">核心理念自 v1 一脉相承：<b>一张地图走天下——出发前高效做功课，旅途中点一下解决衣食住行。</b>四大功能（一图看全程 / 信息聚合 / 一键导航 / 开销+时间记录）全部保留，但重心从「看攻略」移向「做攻略」。</p>
+</div>
+
+<h2 class="heading">1.3 边界声明</h2>
+<div class="doc-section alt">
+  <ul class="list">
+    <li><b>全国任一城市，运行时取数：</b>搜哪个城市就出哪个城市的真实地图与 POI（腾讯 WebService），不做「预置城市清单」的限制；预置三城种子仅作兜底与演示。</li>
+    <li><b>攻略以单城市为主，支持跨城：</b>「大理→丽江」这类跨城行程可表达，但跨城交通段<b>只做示意</b>（不录铁路班次，时间轴用「翌日 · 赴丽江」分隔卡缝合）。</li>
+    <li><b>单一地图界面：</b>所有功能以抽屉（drawer）+ 弹层（popup）展开，不做浏览/编辑双模式切换；两个页面级视图：首页「我的攻略」与「攻略编辑器」。</li>
+    <li><b>仅本人使用：</b>无账号、无云端同步；攻略存 localStorage，换设备用 JSON 导出导入迁移。静态站点无服务器数据，别人猜到 URL 也只能看到空应用。</li>
+    <li><b>零定位权限：</b>「足迹墨线」（GPS 轨迹）方案已评审并<b>放弃</b>；忆游回顾与 4.17 行迹均不依赖任何位置采集（行迹=攻略数据聚合）。</li>
+  </ul>
+</div>
+<!-- ===== 二、需求决策总账 ===== -->
+<h1 class="heading" id="sec-2">二、需求决策总账（D01–D62）</h1>
+<div class="doc-section">
+  <p class="paragraph noindent">本章是五轮需求讨论（2026-11-17）沉淀的全部<b>已确认决策</b>，按主题分六组。每项决策均由用户当面选定（或采纳推荐项）；开发过程中的任何「凭感觉」，先回这张表。</p>
+</div>
+
+<h2 class="heading">2.1 表A · 产品定位与范围（D01–D08）</h2>
+<div class="table-wrap">
+  <div class="table-caption">表A 产品定位与范围</div>
+  <table class="table" data-caption="表A 产品定位与范围">
+    <colgroup><col style="width:8%"><col style="width:22%"><col style="width:70%"></colgroup>
+    <thead><tr><th class="dno">编号</th><th>决策点</th><th>定案与关键边界</th></tr></thead>
+    <tbody>
+      <tr><td class="dno">D01</td><td>交付物形态</td><td>高保真可点击交互原型：视觉完整、可操作；非纯文档、非生产级全栈系统。零后端、零数据库。</td></tr>
+      <tr><td class="dno">D02</td><td>核心理念</td><td>一张地图走天下——出发前高效做功课，旅途中点一下解决衣食住行。四大功能（一图看全程/信息聚合/一键导航/开销+时间记录）全保留。</td></tr>
+      <tr><td class="dno">D03</td><td>产品性质</td><td>全国任意城市攻略「编辑器」：搜哪个城市出哪个城市。v1 的「固定大理丽江行程浏览器」已推翻。</td></tr>
+      <tr><td class="dno">D04</td><td>攻略范围</td><td>单城市为主，支持跨城（cities 数组）；跨城交通段只做示意（地图示意线+时间轴分隔卡），不录班次数据。</td></tr>
+      <tr><td class="dno">D05</td><td>界面结构</td><td>单一地图界面 + 抽屉 + 弹层，不做双模式切换。页面级视图仅两个：我的攻略（首页）与攻略编辑器。</td></tr>
+      <tr><td class="dno">D06</td><td>设备与响应式</td><td>桌面 + 手机；移动端 bottom sheet 三档拖拽 + 精简 Header + 底部 Tab（只切抽屉内容，地图恒在背景）。</td></tr>
+      <tr><td class="dno">D07</td><td>站名</td><td>「拾程」（谐音时辰）。朱砂印文「拾程」做站标：顶栏、加载态、导出落款三处统一。</td></tr>
+      <tr><td class="dno">D08</td><td>数据边界</td><td>无账号、无云端同步；攻略存本机 localStorage；换设备靠 JSON 导出导入。用户已确认接受单机形态。</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<h2 class="heading">2.2 表B · 数据与地图（D09–D17）</h2>
+<div class="table-wrap">
+  <div class="table-caption">表B 数据与地图</div>
+  <table class="table" data-caption="表B 数据与地图">
+    <colgroup><col style="width:8%"><col style="width:22%"><col style="width:70%"></colgroup>
+    <thead><tr><th class="dno">编号</th><th>决策点</th><th>定案与关键边界</th></tr></thead>
+    <tbody>
+      <tr><td class="dno">D09</td><td>底图渲染</td><td>腾讯 JS API GL + 自定义水墨底图样式（淡化道路、突出山水留白）；保留「切回标准底图」开关防可读性损失。</td></tr>
+      <tr><td class="dno">D10</td><td>数据层</td><td>WebService JSONP：城市/地点搜索、路线规划（驾车/步行/骑行/公交）、逆地理。用户已去控制台补开 WebService 权限并提供 Key。</td></tr>
+      <tr><td class="dno">D11</td><td>Key 双轨</td><td>构建期用助手侧连接器拉真实数据内嵌种子（大理/丽江/北京）；运行时 Key 经设置面板输入存 localStorage。<b>Key 不明文写入任何代码与文档</b>。</td></tr>
+      <tr><td class="dno">D12</td><td>行动层</td><td>URI API：移动端 qqmap:// 唤起腾讯地图 App 导航；Web 端降级 apis.map.qq.com/uri/v1/ 页面跳转。</td></tr>
+      <tr><td class="dno">D13</td><td>降级底图</td><td>无 Key / GL 加载失败 → SVG 自绘水墨底图（首页中国轮廓；编辑器城市抽象底图+线性投影）+ 印章标记 + 常驻「演示数据」朱砂徽章。</td></tr>
+      <tr><td class="dno">D14</td><td>天气数据</td><td>Open-Meteo 免 Key 为主；预报窗口约 16 天；窗口外行程显示「临近出发自动更新」+ 当月气候参考文案，不硬造数据。</td></tr>
+      <tr><td class="dno">D15</td><td>坐标系纪律</td><td>腾讯 GCJ-02 与 Open-Meteo WGS-84 不混用：天气按城市中心点查询，POI/路线一律 GCJ-02；代码处显式注释。</td></tr>
+      <tr><td class="dno">D16</td><td>缓存与配额</td><td>热门榜按「城市+类别」单次拉取后缓存；搜索 300ms 防抖 + 结果缓存；路线段级缓存。个人 Key 地点搜索配额约 200 次/天，以内嵌数据为主。</td></tr>
+      <tr><td class="dno">D17</td><td>199 引导</td><td>运行时检测 WebService 返回 status:199 → 弹层引导用户去控制台补开权限；期间预置种子城市仍可用。</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<h2 class="heading">2.3 表C · 编辑与编排（D18–D28）</h2>
+<div class="table-wrap">
+  <div class="table-caption">表C 编辑与编排</div>
+  <table class="table" data-caption="表C 编辑与编排">
+    <colgroup><col style="width:8%"><col style="width:22%"><col style="width:70%"></colgroup>
+    <thead><tr><th class="dno">编号</th><th>决策点</th><th>定案与关键边界</th></tr></thead>
+    <tbody>
+      <tr><td class="dno">D18</td><td>编辑主流程</td><td>先入日程再连线：POI 加入某天 → 相邻两点自动连线 → 逐段选交通方式（换方式即换线路样式与时长）。</td></tr>
+      <tr><td class="dno">D19</td><td>收藏池（心愿单）</td><td>核心流程：搜索/热门榜→收藏→空闲时分日；入日程自动移出，从日程移出可退回池；常驻侧栏显示数量徽章。</td></tr>
+      <tr><td class="dno">D20</td><td>时间推算</td><td>自动推算 + 可改：停留时长按类别默认值（见 6.6），当日出发默认 09:00 可改，交通时长串联出各点到达/离开时间。</td></tr>
+      <tr><td class="dno">D21</td><td>智能辅助四件套</td><td>①按距离推荐交通（&lt;800m 步行 / 800m–3km 步行或骑行 / &gt;3km 打车；步行&gt;40 分钟预警改打车）②顺路重排（虚线预览，采用/放弃，不强制）③过载预警（当日非驻地 POI&gt;8 或交通总时长&gt;180 分钟出朱砂提示）④欠载提醒（推算日结束&lt;15:00 且已有 POI，提示「下午尚空」+ 池内就近推荐 +「加一天」按钮）。</td></tr>
+      <tr><td class="dno">D22</td><td>交通可视化</td><td>打车=淡赭实线+朱砂小车沿线缓动；步行=淡青虚线+脚印图标+步行小人缓步；公交=青灰双线+站点圆点+换乘车次牌；骑行=细线+单车图标。每段挂时长牌；估算段标朱砂「估」小字。</td></tr>
+      <tr><td class="dno">D23</td><td>自定义地点</td><td>长按地图落点 → 弹层命名/选分类 → 成 POI（source:'custom'），可入日程可导航，解决腾讯未收录的民宿/朋友家/路边小店。</td></tr>
+      <tr><td class="dno">D24</td><td>多日视图</td><td>默认聚焦当日线路（左侧切日联动地图）；「全览」叠加全部线路按日分色；跨城攻略全览时两城示意线连接。Day 点击高亮当天、淡化其余。</td></tr>
+      <tr><td class="dno">D25</td><td>跨日调整</td><td>桌面拖拽跨日 + 日程项菜单「移到第 N 日」双通道；移动端一律按钮菜单不做触屏拖拽；移动/删除后自动重算交通段与时间推算。</td></tr>
+      <tr><td class="dno">D26</td><td>删除保护</td><td>删除一律确认 + toast 内「撤销」（轻量撤销栈，仅删除可撤销，不做全量 undo）。</td></tr>
+      <tr><td class="dno">D27</td><td>重复 POI</td><td>同一 POI 允许多天出现（美食可重复），加入时提示「已在第 N 日」。</td></tr>
+      <tr><td class="dno">D28</td><td>Day 标题</td><td>默认「Day N · 城市」，可改主题日（如「Day 3 · 玉龙雪山日」）。</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<h2 class="heading">2.4 表D · 功能细节（D29–D40）</h2>
+<div class="table-wrap">
+  <div class="table-caption">表D 功能细节</div>
+  <table class="table" data-caption="表D 功能细节">
+    <colgroup><col style="width:8%"><col style="width:22%"><col style="width:70%"></colgroup>
+    <thead><tr><th class="dno">编号</th><th>决策点</th><th>定案与关键边界</th></tr></thead>
+    <tbody>
+      <tr><td class="dno">D29</td><td>住宿「驻地锚点」</td><td>住宿类 POI 默认 role=base：地图上墨顶小印样式常驻；时间轴不占白天时段，仅画夜间「宿 · XX」小卡；换酒店即换锚点，不污染时间轴。</td></tr>
+      <tr><td class="dno">D30</td><td>「已至」盖章</td><td>今天视图每到一处点「已至」→ 该点印章变灰 + 朱砂小印「已至」盖落动效；当日结束出小结（走了 N 处 / 花了多少钱）。</td></tr>
+      <tr><td class="dno">D31</td><td>攻略管理</td><td>首页列表按 updatedAt 倒序；可手动归档「已行卷」折叠区（可恢复）；进行中攻略带朱砂条。</td></tr>
+      <tr><td class="dno">D32</td><td>城市印记</td><td>首页水墨中国地图上，做过攻略的城市落一枚小印，三态：未出发墨色 / 进行中朱砂 / 已完成盖「行」字。攻略管理与中国地图由此串成一体。</td></tr>
+      <tr><td class="dno">D33</td><td>天气角标</td><td>城市地图右上角淡青小牌（天气图标+当前温度），点击跳行程时间轴详细预报。</td></tr>
+      <tr><td class="dno">D34</td><td>行前锦囊</td><td>出发前一天出现锦囊，拆封动效打开：穿衣建议 + 预算余量 + 首站与出发时间 + 天气。把「出发前做功课」的收束变成开箱仪式。</td></tr>
+      <tr><td class="dno">D35</td><td>「该出发了」</td><td>今天视图按当前时间 + 下一程交通耗时自动出朱砂提示条（含推荐出发时刻），地图从「看」变「催」。</td></tr>
+      <tr><td class="dno">D36</td><td>雨备方案</td><td>预报有雨的日子轻提示「明日有雨」；收藏池中博物馆/展馆/美食类列为「雨天可去」，可一键替换当天某点。</td></tr>
+      <tr><td class="dno">D37</td><td>记账</td><td>预算环形图 + 分类柱状图 + 明细增删改；交通段保存后「记一笔」预填估算费用（金额可改）；花超预算环形图整体转朱砂 + 细字「已逾制」。分类固定：餐饮/住宿/交通/门票/购物/其他。</td></tr>
+      <tr><td class="dno">D38</td><td>导出三件套</td><td>①国风长卷图片：1080px 竖版、自绘 canvas、含题跋与自刻闲章落款、不含个人记账明细（可选含预算执行一行）②打印自用版 HTML：离线自包含可打印，含行程 + 记账明细 + 预算执行 ③JSON 备份/恢复：设置面板低调入口，支撑换设备迁移。</td></tr>
+      <tr><td class="dno">D39</td><td>忆游回顾</td><td>已结束攻略的回顾态：已至印章分布图 + 花费曲线 + 题跋集 + 行程小结。<b>无 GPS 足迹</b>（足迹墨线方案已放弃），应用零定位权限。</td></tr>
+      <tr><td class="dno">D40</td><td>全程回放</td><td>全览模式彩蛋：小车沿全程线路快进回放（可暂停）。检查行程节奏 + 演示效果，诚实标注偏观赏性，Phase 9 最后做。</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<h2 class="heading">2.5 表E · 视觉与氛围（D41–D47）</h2>
+<div class="table-wrap">
+  <div class="table-caption">表E 视觉与氛围</div>
+  <table class="table" data-caption="表E 视觉与氛围">
+    <colgroup><col style="width:8%"><col style="width:22%"><col style="width:70%"></colgroup>
+    <thead><tr><th class="dno">编号</th><th>决策点</th><th>定案与关键边界</th></tr></thead>
+    <tbody>
+      <tr><td class="dno">D41</td><td>色板</td><td>宣纸底 #F2ECE0 / 汝窑天青 #8FA9A6（主）/ 淡赭 #B08D70（副）/ 墨 #2C2A26（文字线条）/ 朱砂 #A64834（印章强调）；辅助云雾白 #FAF6ED、远山青灰 #B9C6C4、浅墨灰 #6E6A62。低饱和暖灰调，<b>禁紫与蓝紫渐变</b>。</td></tr>
+      <tr><td class="dno">D42</td><td>字体</td><td>Noto Serif SC（宋韵核心）；Ma Shan Zheng（仅题字点缀）；Cormorant Garamond（数字/金额/日期戳）。禁 Inter/Roboto/Arial/system-ui。<b>构建期子集化自托管 WOFF2 进 dist</b> + font-display:swap。</td></tr>
+      <tr><td class="dno">D43</td><td>图标</td><td>lucide-vue-next 为全站唯一功能图标库，<b>禁 emoji</b>；印章/卷轴/折扇/毛笔标记为装饰性自绘 SVG 插画（属插画，不违反统一图标库）。</td></tr>
+      <tr><td class="dno">D44</td><td>布局骨架</td><td>地图满屏为基底：左侧竖排日程（细墨线串联仿卷轴题签）、顶部卷首横幅（细双边线+朱砂小印）、右侧抽屉（时间轴/记账）、右下浮动朱砂印钮 FAB；非对称栅格 + 大量留白。</td></tr>
+      <tr><td class="dno">D45</td><td>印章体系</td><td>统一形制（方形篆刻 + 印泥微渗 0.2s 动效）：站标「拾程」、图钉「第N日」小印、图层篆书小印、城市印记三态印、已至印、自刻闲章、预算「已逾制」。</td></tr>
+      <tr><td class="dno">D46</td><td>宣纸呼吸</td><td>昼夜宣纸色温微变（夜间偏暖偏暗）+ 雨天偏青灰（联动天气数据）；克制实现，不做夸张特效。</td></tr>
+      <tr><td class="dno">D47</td><td>动效基线</td><td>转场三段（水墨晕染 0.8s 遮罩 → GL flyTo → 卷轴横幅+落印）；抽屉卷轴展开 0.3s ease-out；盖章 0.25s；加载=水墨晕染+印章落定；空态=卷首空白页+邀请语。低端机降级为静态样式线+时长牌。</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<h2 class="heading">2.6 表F · 点睛与工程（D48–D54）</h2>
+<div class="table-wrap">
+  <div class="table-caption">表F 点睛与工程</div>
+  <table class="table" data-caption="表F 点睛与工程">
+    <colgroup><col style="width:8%"><col style="width:22%"><col style="width:70%"></colgroup>
+    <thead><tr><th class="dno">编号</th><th>决策点</th><th>定案与关键边界</th></tr></thead>
+    <tbody>
+      <tr><td class="dno">D48</td><td>点睛包（全收）</td><td>天气诗句（按天气配一行古诗，映射表见 4.11）；题跋手记（任一 POI/任一天可写一句小楷，导出呈题跋）；自刻闲章（建攻略刻两字，默认随机「远游/拾光」类）；印泥微渗动效；宣纸呼吸；预算朱砂线。六项成本≈0，全部收进 v4。</td></tr>
+      <tr><td class="dno">D49</td><td>技术栈</td><td>Vue 3（Composition API + <b>&lt;script setup&gt;</b> + TypeScript）+ Vite 5 + Pinia + Vue Router 4（hash 模式）+ Tailwind CSS v3.4（design token 写入配置）+ ECharts/vue-echarts + lucide-vue-next。<b>非 React</b>，零后端。</td></tr>
+      <tr><td class="dno">D50</td><td>PWA</td><td>手写最小 manifest + Service Worker（缓存应用壳；数据在 localStorage）；「添加到主屏幕」变独立入口；不引 vite-plugin-pwa，保持零多余依赖。</td></tr>
+      <tr><td class="dno">D51</td><td>部署</td><td><b>仅腾讯 EdgeOne Pages</b>（免费、国内边缘节点、Git 集成或 CLI 上传、默认域名免备案；自定义域名走国内加速需备案）。Vite base:'./' 相对路径；hash 路由天然免 404 兜底。上线后在腾讯控制台为 Key 配域名白名单。</td></tr>
+      <tr><td class="dno">D52</td><td>种子数据</td><td>大理 / 丽江 / 北京三城真实 POI、路线、天气，构建期用助手侧连接器配用户 Key 拉取写入 src/seed；开箱即真实数据（含 POI 坐标/评分/人均/营业时间/封面图/天气序列）。</td></tr>
+      <tr><td class="dno">D53</td><td>范围红线</td><td>明确不做清单见第十一章（协作/社区/票务/比价/离线包/行李清单/AA 分摊/语音/GPS 足迹/AI 推荐等）；防止范围爆炸，保持高保真原型边界。</td></tr>
+      <tr><td class="dno">D54</td><td>动效库组合（全套）</td><td>anime.js v4（动画引擎：墨线描边/小车沿路径/时间轴/逐字 stagger）+ lottie-web（水墨晕染转场/锦囊拆封/印泥微渗 Lottie 素材）+ roughjs 与 rough-notation（朱笔批注毛笔质感/手绘圈选）+ vue-konva（批注画布对象化与撤销栈）；宣纸纹理为一次性 SVG feTurbulence 工具类；不引 motion-v 避免能力重叠；Lottie JSON 打包 public/lottie/ 保持离线自包含，总包体增量约 100–130KB。</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<h2 class="heading">2.7 表G · 行迹、动效与布局（D55–D62）</h2>
+<div class="table-wrap">
+  <div class="table-caption">表G 行迹、动效与布局</div>
+  <table class="table" data-caption="表G 行迹、动效与布局">
+    <colgroup><col style="width:8%"><col style="width:22%"><col style="width:70%"></colgroup>
+    <thead><tr><th class="dno">编号</th><th>决策点</th><th>定案与关键边界</th></tr></thead>
+    <tbody>
+      <tr><td class="dno">D55</td><td>行迹·定义与数据源</td><td>「旧游」仅指本应用内已完成（含已归档）的攻略，<b>不做应用外旅行补录</b>；数据全部派生自攻略结构（cities/起止日/archived）与已至盖章（visitedAt），零新增采集、零定位权限；「图随行程生长」为已确认取舍。</td></tr>
+      <tr><td class="dno">D56</td><td>行迹·入口与渲染</td><td>首页「印记 · 行迹」小楷双态开关（不单开页面）；行迹态只渲染已结束攻略：有盖章=朱砂实印「行」、零盖章=淡墨虚边印（去了没留印）；仅<b>同一攻略内</b>跨城段画淡墨示意虚线（形制同 D04），<b>攻略间不连线</b>；年份胶囊仅数据跨年时出现；一城一印，多卷游数进小卷。</td></tr>
+      <tr><td class="dno">D57</td><td>行迹·该城行迹小卷</td><td>点行迹印记出宣纸小卷弹层：按时间列该城全部已结束攻略（日期/盖章数/题跋数/归档标记），点任一卷直进其忆游回顾；「再游 N 次」在弹层表达，地图本体保持一城一印的干净。</td></tr>
+      <tr><td class="dno">D58</td><td>行迹·统计口径</td><td>行迹态卷首一行小楷「历 N 省 M 城 · 在路 X 日 · 盖章 Y 枚」：城=去重城市数、在路日=Σ(结束日−开始日+1)、盖章=Σ已至数；省数依赖向导选址时把 WebService 返回的 province 落库 cities[].province（无 Key 走内置城市表映射），<b>缺失则省数不显示</b>，不以猜测凑数（诚实原则）。</td></tr>
+      <tr><td class="dno">D59</td><td>动效体系</td><td>动效=笔墨物理感：<b>晕（扩散）/落（盖印）/展（卷展）/行（笔行）四语法</b>统摄全站，令牌与分场景清单见 5.7；三纪律——反馈优先、一屏两动、可静可断（prefers-reduced-motion + 低端机降级）；全站动效统一经 src/lib/motion.ts 调用。</td></tr>
+      <tr><td class="dno">D60</td><td>首页布局·一图一轴</td><td>首页重构为「地图满幅 + 右缘竖挂轴」：中国地图升为整页底层（去卡片边框，水墨边界融入宣纸底）；<b>撤销顶部横幅</b>，站标「拾程」印落地图左上角作题签式小印；搜索框移出地图入挂轴；空态改地图中央竖排题跋小楷。目标：整页只有「图 + 轴」两个元素，地图无遮挡。</td></tr>
+      <tr><td class="dno">D61</td><td>挂轴形制与交互</td><td>右缘挂轴（ScrollSidebar）：收起态≈48px 轴条（上下轴头钮 + 竖排小楷「拾程 · 卷」+ 篆书小印，hover 微伸示意）；展开态≈340px 全高卷面板（宣纸纹理 + 左缘细双边线 + 淡墨毛玻璃），<b>覆盖式展开不要求地图让位</b>（300ms「展」语法）；卷内自上而下：城市搜索 →「印记·行迹」开关（Phase 10 落地）→ 新建攻略 → 我的攻略列表（内滚）→ 已行卷 → 卷尾设置（Key/JSON 备份）；点轴外任意处或 Esc 收合。</td></tr>
+      <tr><td class="dno">D62</td><td>布局重构范围</td><td>仅首页改「一图一轴」，桌面与移动共用（移动端挂轴滑入，不引入 bottom-sheet 新形态）；<b>编辑器布局不动</b>（已满足地图满屏 + 抽屉）；改完视效果再议编辑器套用。</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<h2 class="heading">2.8 表H · 首页气韵（D63–D68）</h2>
+<div class="table-wrap">
+  <div class="table-caption">表H 首页气韵（晕墨·山水·有机印记·画眼·两动·破格）</div>
+  <table class="table" data-caption="表H 首页气韵">
+    <colgroup><col style="width:8%"><col style="width:22%"><col style="width:70%"></colgroup>
+    <thead><tr><th class="dno">编号</th><th>决策点</th><th>定案与实施规格（Cursor 可照做）</th></tr></thead>
+    <tbody>
+      <tr><td class="dno">D63</td><td>地图墨韵·晕墨</td><td>省界由单色剪影改四档墨阶：<b>#F0EAD9 / #EAE2CC / #E3D8BD / #DCCFAF</b>（宣纸系淡→浓），按省名确定性 hash 取档（刷新不变、不闪）；边线换毛笔质感——SVG filter <b>feTurbulence(baseFrequency=0.012, numOctaves=2) + feDisplacementMap(scale=3)</b> 施于边界 path 组，零 JS 依赖；地图容器叠 .paper-tex 宣纸纹理层。落点：ChinaInkMap 的 paths 计算。</td></tr>
+      <tr><td class="dno">D64</td><td>山水笔意</td><td>静态 SVG path 写死于 ChinaInkMap（坐标经 toX/toY 投影）：<b>山脉淡墨笔触</b>（stroke #A9B4B2、opacity .3、宽 2.5–4px、linecap round）——喜马拉雅弧（lat 28–30 / lng 78–96）、横断纵弧（lng 98–102）、秦岭横贯（lat 33.5–34 / lng 105–112）、天山（lat 42–43 / lng 79–92）、大兴安岭纵线（lng 120–123）；<b>江河留白双勾</b>（亮色 #FAF6ED 宽 3px 主线 + 两侧淡墨晕影）——长江折线（98,34→106.5,29.5→114.3,30.6→118.8,32→121.5,31.2）、黄河「几」字（96,35→103,36→106,38.5→110,40.5→110.5,35→113,34.8→118.5,37.5）。</td></tr>
+      <tr><td class="dno">D65</td><td>印记有机化</td><td>城市印记全套有机化：微旋转 <b>±4°</b>（hash 确定性不闪烁）；两档大小——14 重点城市（北上广深成杭宁西安汉廈昆大丽拉哈乌鲁木齐等内置表前 14）<b>28px</b> / 其余 <b>22px</b>；入场「落印」stagger <b>60ms</b>（stamp-in + 印泥微渗，整组 ≤1.2s）；hover 抬起 translateY(-2px) + 阴影加深 + 印文 scale 1.05（150ms）。</td></tr>
+      <tr><td class="dno">D66</td><td>画眼·最近编辑</td><td>未归档攻略中 updatedAt 最大者的 cities[0] 为<b>画眼</b>：印记再 +4px；朱砂呼吸圈（r20 stroke #A64834 opacity .5↔.15，<b>2.4s 循环</b>，页面唯一常驻动效）；题签挂线（1px 细线上引 40–56px + 顶端竖排城市名小楷 + 小朱点，如画上题签）。其余印记为次印，不加动效。</td></tr>
+      <tr><td class="dno">D67</td><td>首页动效·两动克制</td><td>常驻动效仅 2 项：画眼呼吸 + 挂轴 hover 微伸（交互反馈不计入）；入场一次性序列 ≤2.5s：<b>宣纸淡入 0.4s → 落印 stagger（≤1.2s）→ 云雾过场</b>（2–3 朵淡墨云沿边缘漂一遍 3s，后渐隐或停驻为 opacity .12 静态装饰，「过一遍就停」）；prefers-reduced-motion 全关直呈静态。严守 D59 纪律②。</td></tr>
+      <tr><td class="dno">D68</td><td>构图破格</td><td>站名题签改<b>竖排</b>（writing-mode: vertical-rl）并左压出纸边 ~12px，朱砂印钤于题签下方；行迹统计行从正上居中改为<b>题跋式</b>挂于左上题签下方（左对齐）；空态在竖排「展卷，自一城始」下加一方<b>未钤虚边空印</b>（点击即开新建向导）。破格原则：题跋、印章、留白允许出边压角，不与纸边机械对齐。</td></tr>
+    </tbody>
+  </table>
+</div>
+<h2 class="heading">2.9 表I · 实现补遗（D69–D80）</h2>
+<div class="table-wrap">
+  <div class="table-caption">表I 实现补遗（实施阶段超出文档、复核后追认）</div>
+  <table class="table" data-caption="表I 实现补遗">
+    <colgroup><col style="width:8%"><col style="width:22%"><col style="width:70%"></colgroup>
+    <thead><tr><th class="dno">编号</th><th>决策点</th><th>定案与关键边界</th></tr></thead>
+    <tbody>
+      <tr><td class="dno">D69</td><td>底图三档（扩 D09）</td><td>D09 原为「水墨样式 + 标准底图开关」两态，实施中扩为三档：<b>水墨舆图</b>（自绘 SVG，零瓦片、断网可看）/ <b>真实·纸色</b>（腾讯 GL 压成宣纸色、去标注）/ <b>真实·标准</b>（保留路名与地点标注）。状态存 <code>ui.settings.baseMap: 'ink'|'paper'|'standard'</code>，设置面板三格分段钮切换，写 localStorage 并兼容旧版 <code>standardMap</code> 布尔存档。</td></tr>
+      <tr><td class="dno">D70</td><td>纸色配方（D09 实现细则）</td><td><b>不用腾讯自定义 style。</b>腾讯 GL 的 style 结构与常见地图厂商（featureType/elementType 式）不同，写错不会报错，而是把整层渲染成空白（实测踩过）。改为「原样式 + CSS 处理」：容器滤镜 <code>saturate(.58) brightness(1.02) contrast(.96)</code> → 纸色罩 <code>var(--paper)</code> 以 <code>mix-blend-mode: color</code>、opacity .66 混合 → 四角暗角 → feTurbulence 纸纹。<b>为什么用 color 不用 multiply</b>：color 只夺色相、保留明度层次，路网与水系仍可分辨；multiply 会把路网压没。</td></tr>
+      <tr><td class="dno">D71</td><td>底图去标注</td><td><code>baseMap.features = ['base','road','building']</code>（标准档追加 <code>'point'</code>）。去掉腾讯自带 POI 气泡与路名，避免压住印章、注名与墨线；代价是"找路"信息变少，故保留 D69 的标准档作为可读性出口。</td></tr>
+      <tr><td class="dno">D72</td><td>路线真实化四通道</td><td><code>API_MODE = { taxi:'driving', walk:'walking', bike:'bicycling', transit:'transit' }</code>；公交把 <code>routes[0].steps[].polyline</code> 逐段解压后拼成一条连续折线；打车费用服务不返回，仍按 2.4 元/公里估（下限 8 元），公交取接口 <code>price</code>（单位分）。</td></tr>
+      <tr><td class="dno">D73</td><td>压缩坐标解压</td><td>腾讯 polyline：<b>首点为绝对经纬度，其后每两个数是相对前一点的差值（1e-6 度）累加</b>——不是每段重新取绝对值。曾按"遇 (0,0) 重同步"实现，末点算到 <code>[-95.0002,-18.9999]</code> 的荒唐值；改纯差值累加后末点 <code>[25.60598,100.266924]</code>，与目的地误差约 10 米。<code>(0,0)</code> 视为重复点跳过，相邻重复点按 1e-6 清洗，否则线宽渲染发毛。</td></tr>
+      <tr><td class="dno">D74</td><td>GL 与 SVG 对齐</td><td>GL 只当静态画面：<code>draggable / scrollable / doubleClickZoom / touchZoomable / pitchable / rotatable</code> 全 false，视野由外层 <code>bounds</code> 单向驱动。zoom 由跨度反算 <code>z = log2(cssW·360 / (256·spanLng))</code>；因 GL 会吸附瓦片精度（实测偏约 1.5%），初始化后 260ms 读 <code>getBounds()</code> 实测再补一次修正，然后重设中心。</td></tr>
+      <tr><td class="dno">D75</td><td>水墨常驻打底</td><td>自绘舆图不再条件渲染，恒为最底层；GL 收到 <code>idle</code>（或 1800ms 兜底）后 500ms 淡入盖住。解决瓦片未铺满时的整屏闪白，也让"淡入"本身成为一次过场。</td></tr>
+      <tr><td class="dno">D76</td><td>渐进式补路线</td><td><code>refineDay(dayIndex)</code> 逐段把 <code>estimated</code> 段替换为真实值，失败则保留估算、继续挂朱砂「估」字，不打断任何编辑动作。<code>inflight</code> Set 以「段 ID + 方式 + 两端坐标」为戳防重复请求；返回后比对 <code>still.mode === modeAtRequest</code>，用户中途改了方式就丢弃过期结果。</td></tr>
+      <tr><td class="dno">D77</td><td>布局让位（D06/D44 收敛）</td><td>桌面：左右栏与地图同为 flex 子项，抽屉<b>参与布局</b>而非覆盖地图（覆盖式会挡住画面，用户明确反对）；地图容器 <code>min-h-0</code> 保证可压缩。移动：bottom sheet 参与 flex，地图自动收缩。<b>悬浮元素归属</b>：FAB 组落在 <code>.map-stage</code> 内（不压底部抽屉）；图例抬到 <code>bottom-10</code> 躲开腾讯 logo；城市竖排题签与搜索条各占独立行。</td></tr>
+      <tr><td class="dno">D78</td><td>城市舆图程序化生成</td><td>D13 降级底图的落地方式：8 城手写 profile（大理 / 丽江 / 北京 / 杭州 / 成都 / 西安 / 厦门 / 桂林）+ 未知城市按城市名哈希取 3 套骨架之一，保证"搜任何城市都有图"。画法纪律：山脉用圆浑峰头 <code>massif()</code> 且<b>只描上缘</b>（描闭合轮廓会出现平直"底座"，像几何图形）、山脚用渐变压到 0.06；皴笔由 clipPath 裁在山体内；田畴只落横斜短笔（带边框的矩形会像表格）；聚落成组小方而非均匀网格；巷陌与官道画在水系<b>之前</b>，让水面盖住穿湖的路。</td></tr>
+      <tr><td class="dno">D79</td><td>印记注名抗遮挡</td><td>注名贴边时按 x 切 <code>start / middle / end</code> 锚点并反向内收，避免被画布裁掉；再按包围盒做去重，冲突者<b>只留印章不留字</b>（宁可少字，不可叠字）。</td></tr>
+      <tr><td class="dno">D80</td><td>Key 注入方式（修订 D11）</td><td>构建期 Key 走 <code>.env</code> 的 <code>VITE_TMAP_KEY</code>，运行时设置面板输入存 <code>shicheng:key</code> 并覆盖构建值；<code>.env</code> 不入仓库，<code>.env.example</code> 留空模板。<b>边界声明</b>：<code>VITE_</code> 前缀的变量会被打进前端产物，因此这<b>不是保密手段</b>，只为避免 Key 明文写进源码与文档；真正的防护仍是控制台域名白名单 + 配额。</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<h2 class="heading">2.10 表K · 体验与动效补强（D81–D90）</h2>
+<div class="table-wrap">
+  <div class="table-caption">表K 体验与动效补强（v4.6 实施追认）</div>
+  <table class="table" data-caption="表K 体验与动效补强">
+    <colgroup><col style="width:8%"><col style="width:22%"><col style="width:70%"></colgroup>
+    <thead><tr><th class="dno">编号</th><th>决策点</th><th>定案与关键边界</th></tr></thead>
+    <tbody>
+      <tr><td class="dno">D81</td><td>动效底座落地</td><td><code>src/lib/motion.ts</code> 正式接入 anime.js v4（<code>animate / createTimeline / stagger / createDrawable</code>）+ roughjs + rough-notation + lottie 按需；统一 <code>canAnimate()</code>：<code>prefers-reduced-motion</code> 或低端机（deviceMemory≤2 / cores≤2）时静默降级。路由级晕染遮罩 <code>InkWashOverlay</code> 走「晕」语法。</td></tr>
+      <tr><td class="dno">D82</td><td>长按落点优先</td><td>修订 D23 / 4.10：地图空白<b>短按不落点</b>（防误触），<b>长按 600ms</b> + 墨点涟漪才弹出自定义落点；点击交互控件仍即时响应。空态文案同步提示。</td></tr>
+      <tr><td class="dno">D83</td><td>跨日双通道补齐</td><td>D25 落地：移动端「移到第 N 日」菜单 + 桌面 HTML5 拖拽（日程项 → DayRail 日签，MIME <code>application/x-shicheng-poi</code>）；松手后重算交通段，toast 可撤销。</td></tr>
+      <tr><td class="dno">D84</td><td>图层篆印 UI</td><td>景 / 食 / 宿三枚篆书小印（<code>LayerSeals</code>）落在地图舞台左下；桌面工具条亦保留文字切换。调用既有 <code>ui.toggleLayer</code>，不新增状态。</td></tr>
+      <tr><td class="dno">D85</td><td>一图一轴 + 行迹收口</td><td>D60–D62 / D55–D58 标为已实现：<code>ScrollSidebar</code>、<code>MapModeToggle</code>、<code>TrailCityModal</code>、行迹统计行与卷内虚线；首页不再使用顶栏横幅 + 左浮列表面板。</td></tr>
+      <tr><td class="dno">D86</td><td>首页气韵收口</td><td>D63–D68 标为已实现：四档晕墨、毛笔边线、连续山脉笔触、有机印记、画眼呼吸、竖排压边题签、虚边空印；兴安岭仍缺席（纵向梯子观感，诚实保留）。</td></tr>
+      <tr><td class="dno">D87</td><td>199 自动引导</td><td>D17 落地：<code>ui.notifyKeyGuide()</code> 防抖 10s；<code>city</code> / <code>trip.refineDay</code> 捕获 status 199 后弹 <code>KeyGuideModal</code> + toast；首页亦挂载该弹层。</td></tr>
+      <tr><td class="dno">D88</td><td>记账口径诚实化</td><td>日抽屉只展示当日支出，不与全程预算比「已逾制」；全程预算执行单独提示。避免「第一天就逾制」的误导。</td></tr>
+      <tr><td class="dno">D89</td><td>PWA 印章图标</td><td><code>public/icons/seal.svg</code> + 纯 Node 栅格 <code>seal-192.png</code> / <code>seal-512.png</code>（<code>npm run icons</code>，不依赖 Playwright）；manifest 多尺寸声明，改善 iOS 添加到主屏幕观感。</td></tr>
+      <tr><td class="dno">D90</td><td>文档与代码同轮更新</td><td>确立工作流：大功能缺口修复时<b>先/同步改设计文档</b>（追认决策 + 刷新核查表），再改代码；禁止「代码超前文档三个版本」。本轮即按此纪律写表K 与 12.5。</td></tr>
+      <tr><td class="dno">D91</td><td>首页印记聚合</td><td>无省份聚焦且印记 &gt;12 时，按屏幕网格聚合为墨点簇（圆心墨色 + 朱砂描边 + 数量）；簇点击取首城进入；下钻省级或印记 ≤12 时全量展开印章。落实 4.2 缩放分层的首页侧。</td></tr>
+    </tbody>
+  </table>
+</div>
+<aside class="callout" data-variant="info">
+  <p><b>补遗的性质：</b>表I / 表K 记录的是实施阶段在文档之外多做的事或把「未达」收口为「已达」的追认。按"变更先改文档"的纪律，这些已追认为正式决策；仍未完成的条目见 <b>12.5 剩余缺口</b>。</p>
+</aside>
+
+<aside class="callout" data-variant="warning">
+  <p><b>诚实原则：</b>凡使用估算数据、种子数据、降级渲染之处，界面一律带可见标识（朱砂「估」小字、「演示数据」常驻徽章），绝不把估算冒充真实。这是用户明确提出的产品价值观。</p>
+</aside>
+
+<!-- ===== 三、用户旅程 ===== -->
+<h1 class="heading" id="sec-3">三、用户旅程与使用场景</h1>
+<div class="doc-section">
+  <p class="paragraph noindent">以「下月去大理和丽江玩五天」为示例场景，把产品按时间轴走一遍——每个阶段右侧标注对应的功能模块，模块详述见第四章。</p>
+  <ol class="timeline">
+    <li><strong>T-2 周 · 逛城市、攒心愿</strong>
+      <p>打开拾程首页：一张水墨中国地图，搜「大理」或直接点滇西的小印 → 水墨晕染转场下钻 → 地图自动标注热门景点/美食/酒店（篆刻印章+毛笔小楷）。看到心动的点「收藏」进心愿池，不急着定哪天。【模块：首页/城市下钻/热门榜/收藏池】</p></li>
+    <li><strong>T-1 周 · 排日程、连线选交通</strong>
+      <p>新建攻略「大理 · 5日」→ 把心愿池里的点分到各天，拖拽调序 → 相邻点自动连线 → 点连线选交通：从民宿到崇圣寺三塔选「打车」，地图上淡赭线路上跑一辆朱砂小车、挂 18 分钟时长牌；古城内点「步行」，淡青虚线加脚印、22 分钟。住宿设为驻地锚点。【模块：日程编排/交通段/智能辅助/时间推算】</p></li>
+    <li><strong>T-1 天 · 拆锦囊</strong>
+      <p>出发前一天打开攻略：顶部浮起一只锦囊，拆封（动效）——穿衣建议、预算余量、首站出发时间、天气诗句。【模块：行前锦囊/天气】</p></li>
+    <li><strong>T 日 · 走在路上</strong>
+      <p>「今天」视图自动激活：按时间高亮当前/下一项；到点时朱砂条提醒「现在出发，步行 25 分钟」；点「导航」唤起腾讯地图；到了崇圣寺点「已至」——印章盖落。中午记账预填估算的打车费。下午预报有雨？收藏池里的博物馆一键换上。【模块：今天视图/该出发了/导航唤起/盖章/记账/雨备】</p></li>
+    <li><strong>T+1 日 · 回顾与沉淀</strong>
+      <p>行程结束后攻略转「回顾态」：已至印章分布、花费曲线、题跋集；归档进「已行卷」；首页中国地图上大理的城市印记盖「行」字。导出一张国风长卷发朋友圈；此后切到「行迹」态，历次行脚汇于一图。【模块：忆游回顾/归档/城市印记/行迹/导出】</p></li>
+  </ol>
+  <div class="card-grid" data-cols="2">
+    <div class="card">
+      <h3>桌面主场景</h3>
+      <p>出发前在家中/办公室用大屏做攻略：地图满屏 + 左侧日程栏 + 右侧抽屉（时间轴/记账切换）+ 鼠标拖拽编排。编辑效率优先。</p>
+    </div>
+    <div class="card">
+      <h3>移动主场景</h3>
+      <p>出行当天用手机：PWA 落桌面一击即达；地图恒为背景，bottom sheet 三档拖拽切换「今天」清单与记账；一键唤起腾讯地图 App 导航。</p>
+    </div>
+  </div>
+</div>
+<!-- ===== 四、功能规格详述 ===== -->
+<h1 class="heading" id="sec-4">四、功能规格详述</h1>
+<div class="doc-section">
+  <p class="paragraph noindent">本章按模块给出<b>交互级规格</b>：入口、操作流、状态与边界。每节末尾标注优先实现阶段。示例场景默认为「大理 · 5日」。</p>
+</div>
+
+<h2 class="heading">4.1 首页 · 我的攻略（MyTripsView，路由 /）</h2>
+<div class="doc-section">
+  <h3 class="heading">页面构成（一图一轴，D60/D61）</h3>
+  <ul class="list">
+    <li><b>满幅地图舞台</b>：中国地图升为整页底层（去卡片边框，水墨边界融入宣纸底）；有 Key 时=腾讯 GL 全国视图套水墨样式（可缩放可点选省份城市）；无 Key 时=自绘 SVG 中国轮廓+淡省界（仅装饰与降级入口，不做精确省界）。地图之上不再悬浮任何输入控件。</li>
+    <li><b>站标题签</b>：左上角落站标「拾程」印 + 一行小楷副题（画卷题签位），撤销顶部横幅与右上大按钮。</li>
+    <li><b>右缘竖挂轴（ScrollSidebar）</b>：收起态≈48px 轴条（轴头 + 竖排「拾程 · 卷」+ 篆书小印）；展开态≈340px 全高卷面板，覆盖式不让位，点外/Esc 收合。卷内自上而下：<b>城市搜索框</b>（300ms 防抖调 WebService 地点搜索城市级；无 Key 按内置城市表约 30 城+种子三城过滤）→「印记 · 行迹」双态开关（Phase 10 落地，规格见 4.17）→「新建攻略」朱砂钮 → <b>我的攻略列表</b>（卷轴式条目：自刻闲章/天数/预算执行/updatedAt，倒序；行中带朱砂点）→ <b>已行卷归档区</b>（折叠、可恢复）→ 卷尾设置入口（Key/JSON 备份）。</li>
+    <li><b>城市印记</b>：做过攻略的城市在图上落一枚小印——未出发墨色、进行中朱砂、已完成盖「行」字；点印记=快捷进入该城最新攻略（无攻略则以近似中心开新建向导）。</li>
+    <li><b>空态</b>：地图中央竖排题跋小楷「展卷，自一城始」（不占控件位）。</li>
+  </ul>
+  <h3 class="heading">新建攻略流（TripWizard）</h3>
+  <ol class="list">
+    <li>点「新建攻略」→ 选城市：搜索框输入或点热门城市印章快捷选（含当前图上选中城市）。</li>
+    <li>天数步进器：1–15 天，默认 3。</li>
+    <li>预算（可选）：默认不限；填写后启用预算环形图与超支预警。</li>
+    <li>自刻闲章：两字输入，默认随机给一枚（「远游」「拾光」「行脚」「且停」轮换）。</li>
+    <li>标题自动生成「{城市} · N日」可改 → 「创建」→ 转场下钻直入编辑器。</li>
+  </ol>
+  <p class="paragraph noindent"><span class="badge">阶段</span> Phase 1 骨架 / Phase 2 中国图接 GL / Phase 8 城市印记与归档打磨；v4.3 一图一轴重构（D60–D62）随本轮落地。</p>
+</div>
+
+<h2 class="heading">4.2 城市下钻与热门标注</h2>
+<div class="doc-section">
+  <h3 class="heading">下钻转场（三段式）</h3>
+  <ol class="list">
+    <li><b>水墨晕染遮罩</b>：选中城市后 0.8s 径向 mask 扩散（从城市坐标晕开淡赭→宣纸色）。</li>
+    <li><b>GL flyTo</b>：相机动画飞至城市中心（zoom 12–13）；无 Key 降级时跳过此段，直接换 SVG 城市底图。</li>
+    <li><b>卷轴横幅 + 落印</b>：「{城市} · 攻略」卷轴横幅徐展 + 朱砂小印「拾程」落印动效；返回时反向收合。</li>
+  </ol>
+  <h3 class="heading">热门标注</h3>
+  <ul class="list">
+    <li>进入城市自动按类搜索热门 POI：景点 / 美食 / 酒店三页签，每类取前 20（WebService place 搜索，region=city）。结果按「城市+类别」缓存 localStorage，<b>只拉一次</b>。</li>
+    <li>标记形制：POI 印章标记（按类着色：景点墨、美食赭、酒店青）+ 毛笔小楷注名。</li>
+    <li>图层开关：右侧图钉组以篆书小印切换 吃/住/玩 显隐；天气并入时间轴不单独成层（D33 角牌除外）。</li>
+    <li>地图缩放分层：低 zoom 只显示日程 POI + 热门前 10（聚合为墨点簇），放大渐显全部。</li>
+    <li>搜索结果与热门榜复用同一 POI 卡片组件（4.9）。</li>
+  </ul>
+  <p class="paragraph noindent"><span class="badge">阶段</span> Phase 2。</p>
+</div>
+
+<h2 class="heading">4.3 编辑器骨架（TripEditorView，路由 /trip/:id）</h2>
+<div class="doc-section">
+  <table class="table" data-caption="编辑器界面分区规格（桌面）">
+    <colgroup><col style="width:16%"><col style="width:42%"><col style="width:42%"></colgroup>
+    <thead><tr><th>区域</th><th>内容</th><th>交互</th></tr></thead>
+    <tbody>
+      <tr><td>顶部卷首横幅</td><td>攻略标题 + 自刻闲章 + 日期范围 + 预算执行细字 + 「今天」入口（行中出现）</td><td>细双边线；点标题可改；点预算跳记账抽屉</td></tr>
+      <tr><td>左侧日程栏</td><td>Day 1–N 竖排（细墨线串联，仿卷轴题签）：各日 POI 数徽章 + 主题日标题</td><td>点 Day 切换聚焦；「+ 加一天」尾钮</td></tr>
+      <tr><td>中央地图</td><td>水墨城市底图 + 印章标记 + 交通线路/动画 + 天气角标 + 搜索框（顶部悬浮）</td><td>点空白收卡片；长按落自定义点；滚轮缩放</td></tr>
+      <tr><td>右侧抽屉</td><td>「行程时间轴 / 记账本」两页签（天气并入时间轴）；卷轴徐展动效 0.3s</td><td>可折叠全屏地图；ESC 关闭</td></tr>
+      <tr><td>右下 FAB 组</td><td>朱砂印钮：全览/聚焦切换、回放、导出、设置（Key）</td><td>展开式印钮组（主钮+扇形子钮）</td></tr>
+      <tr><td>收藏池</td><td>左侧日程栏下方或独立侧签「心愿池 N」</td><td>点开为侧抽屉；池内项可拖入日程（桌面）</td></tr>
+    </tbody>
+  </table>
+  <p class="paragraph"><b>移动端布局</b>：精简 Header（标题+印钮）+ 地图满屏恒为背景 + bottom sheet 三档拖拽（Peek 72px / Half 45% / Full 92%）+ 底部 Tab（日程/时间轴/记账/心愿池，只切抽屉内容）。「今天」视图为底部 Tab 首项（行中）。桌面与移动共用一套 store，仅布局组件分叉。线框图见 5.4。</p>
+  <p class="paragraph"><b>实现注记（D77）</b>：三处"覆盖式"在实施中改为"让位式"——① 桌面右侧抽屉与左栏同为 flex 子项，参与布局，不压地图；② 移动端 bottom sheet 参与 flex，地图自动收缩让位（sheet 三档 76px / 45vh / 92vh）；③ 悬浮钮从"浮在地图上"改为落进 <code>.map-stage</code> 内，且移动端朱砂印钮降为低调的「更多」，避免抢画面。图例抬到 <code>bottom-10</code> 躲开腾讯 logo。</p>
+  <p class="paragraph noindent"><span class="badge">阶段</span> Phase 1 空壳 / Phase 3 编辑功能。</p>
+</div>
+
+<h2 class="heading">4.4 收藏池（心愿单）</h2>
+<div class="doc-section">
+  <ul class="list">
+    <li><b>入池</b>：POI 卡片点「收藏」（印章样式按钮）→ 池徽章 +1，卡片按钮转「已在池 · 去分日」。</li>
+    <li><b>池内结构</b>：按类别小节（景点/美食/酒店/自定义）罗列小卡（名称+评分+人均+类别印），支持移出。</li>
+    <li><b>分日</b>：桌面拖拽池项到左侧某 Day；或点卡片「加入日程」弹 Day 菜单（每项带当日已排数量徽章 +「新的一天」）。</li>
+    <li><b>回流</b>：入日程自动移出池；从日程移出的 POI 退回池（toast 提示可撤销）。</li>
+    <li><b>容量</b>：无上限，徽章显示数量；池是「逛」阶段的暂存层，不做分组/标签。</li>
+    <li><b>雨备联动</b>：池内博物馆/展馆/美食类会被「雨备方案」（4.12）引用为「雨天可去」候选。</li>
+  </ul>
+  <p class="paragraph noindent"><span class="badge">阶段</span> Phase 3。</p>
+</div>
+
+<h2 class="heading">4.5 日程编排</h2>
+<div class="doc-section">
+  <ul class="list">
+    <li><b>日程面板（DayPanel）</b>：选中日的 POI 有序列表：每项显示 到达/离开时间（推算）、停留时长（可改）、类别印、题跋按钮；项间为「交通条」。</li>
+    <li><b>拖拽排序</b>：桌面拖拽项内重排（松手后自动重连线与时间重算）；移动端用项菜单「上移/下移」。</li>
+    <li><b>跨日</b>：拖拽跨 Day 或「移到第 N 日」菜单；移动后该 POI 在两日的交通段自动重算。</li>
+    <li><b>驻地</b>：住宿类入日程时问「设为驻地？」（默认是）→ 进入 Day 的 base 槽位；换酒店=换锚点，时间轴夜间「宿 · XX」小卡随之更新；同酒店多晚自动重复显示宿卡。</li>
+    <li><b>删除</b>：项菜单「移出」→ 确认 → toast「已移出 · 撤销」；该点退回收藏池，相邻交通段重算。</li>
+    <li><b>Day 操作</b>：加一天（尾部）/ 删空的一天（倒数）/ 改标题（主题日）/ 查看该日天气条。</li>
+    <li><b>重复加入</b>：同一 POI 加入已含它的 Day 时提示「已在第 N 日」，仍允许（美食场景）。</li>
+    <li><b>即时保存</b>：所有操作即时写 localStorage，无保存按钮，刷新不丢。</li>
+  </ul>
+  <p class="paragraph noindent"><span class="badge">阶段</span> Phase 3。</p>
+</div>
+
+<h2 class="heading">4.6 交通段系统（核心）</h2>
+<div class="doc-section">
+  <h3 class="heading">编辑入口（双入口同弹层）</h3>
+  <ul class="list">
+    <li>日程面板：相邻两项之间的「交通条」（方式图标 + 时长 + 「改」字），点击弹方式弹层。</li>
+    <li>地图：点击两 POI 间线路，同样弹层。弹层四选：打车 / 步行 / 公交 / 骑行。</li>
+  </ul>
+  <h3 class="heading">视觉规格（四种方式）</h3>
+  <table class="table" data-caption="交通段视觉与数据规格">
+    <colgroup><col style="width:12%"><col style="width:30%"><col style="width:30%"><col style="width:28%"></colgroup>
+    <thead><tr><th>方式</th><th>线路样式</th><th>沿线元素</th><th>数据呈现</th></tr></thead>
+    <tbody>
+      <tr><td>打车</td><td>淡赭 #B08D70 实线（宽 4px）</td><td>朱砂小车图标沿线缓动（速度感）</td><td>时长牌（实测或估+「估」）+ 费用估算</td></tr>
+      <tr><td>步行</td><td>淡青 #8FA9A6 虚线（dash 8/6）</td><td>脚印图标序列 + 步行小人缓步</td><td>时长牌 + 「约 X 步」可选</td></tr>
+      <tr><td>公交</td><td>青灰 #B9C6C4 双线</td><td>站点圆点 + 换乘车次牌（线路号胶囊）</td><td>车次/换乘次数/票价（有 Key 实测）</td></tr>
+      <tr><td>骑行</td><td>天青细线（2px）</td><td>单车图标</td><td>时长牌</td></tr>
+    </tbody>
+  </table>
+  <h3 class="heading">数据与降级</h3>
+  <ul class="list">
+    <li><b>有 Key</b>：WebService 路线规划取真实 path 点列画线 + 实测 durationMin/distanceKm；打车附费用估算；公交附车次/换乘。段级缓存（from+to+mode 为键）。</li>
+    <li><b>无 Key / 失败</b>：两点直线 + 经验速度估算（步行 4.5km/h、骑行 12km/h、打车 30km/h+5min 起步；公交不估、提示需 Key），线路仍按方式样式画直线示意，时长牌挂朱砂「估」小字。</li>
+    <li><b>动画</b>：SegmentAnimator 沿 path 点列插值移动 DOM/SVG marker；低端机（检测 deviceMemory/帧率）降级为静态样式线 + 时长牌。</li>
+    <li><b>费用联动</b>：打车段保存后，记账「记一笔」预填估算费用（可改金额/删除）。</li>
+    <li><b>四通道映射</b>（D72）：打车→driving、步行→walking、骑行→bicycling、公交→transit；公交把 <code>steps[].polyline</code> 逐段拼成一条线，票价取 <code>price</code>（分）。</li>
+    <li><b>坐标解压</b>（D73）：腾讯 polyline 首点为绝对值，其后每两个数是 1e-6 度<b>差值累加</b>；<code>(0,0)</code> 为重复点跳过，相邻重复点需清洗否则线宽发毛。</li>
+    <li><b>渐进替换</b>（D76）：<code>refineDay(dayIndex)</code> 逐段把估算换成真实值，失败保留估算并继续标「估」；请求期间用户改了方式则丢弃结果，不打断编辑。</li>
+  </ul>
+  <p class="paragraph noindent"><span class="badge">阶段</span> Phase 4。</p>
+</div>
+
+<h2 class="heading">4.7 智能辅助四件套</h2>
+<div class="doc-section">
+  <table class="table" data-caption="智能辅助触发条件与交互形态">
+    <colgroup><col style="width:14%"><col style="width:34%"><col style="width:26%"><col style="width:26%"></colgroup>
+    <thead><tr><th>辅助项</th><th>触发条件</th><th>呈现</th><th>交互</th></tr></thead>
+    <tbody>
+      <tr><td>交通推荐</td><td>保存交通段时按直线距离：&lt;800m 步行；800m–3km 步行/骑行；&gt;3km 打车；步行估算&gt;40 分钟</td><td>弹层内默认选中项 + 预警条</td><td>一键采用；忽略照保存</td></tr>
+      <tr><td>顺路重排</td><td>Day 内 ≥3 个非驻地 POI 时出现「顺路」钮</td><td>地图虚线 + 列表虚框预览新顺序</td><td>「采用 / 放弃」，采用后可撤销恢复</td></tr>
+      <tr><td>过载预警</td><td>当日非驻地 POI&gt;8 个，或当日交通总时长&gt;180 分钟</td><td>日程栏该 Day 挂朱砂「满」小印 + 提示条</td><td>点开看明细（可忽略/移出一项）</td></tr>
+      <tr><td>欠载提醒</td><td>推算日结束时刻 &lt;15:00 且当日已有 ≥1 个非驻地 POI</td><td>提示「下午尚空」+ 池内就近 POI 推荐 3 个 +「加一天」钮</td><td>点推荐直达卡片；加一天即时生效</td></tr>
+    </tbody>
+  </table>
+  <p class="paragraph noindent">设计原则：辅助<b>只建议不强制</b>（顺路重排虚线预览、过载可忽略），编辑主导权始终在用户——用户明确要求「纯手动可控」的精神。</p>
+  <p class="paragraph noindent"><span class="badge">阶段</span> Phase 4。</p>
+</div>
+
+<h2 class="heading">4.8 时间推算</h2>
+<div class="doc-section">
+  <ul class="list">
+    <li><b>算法</b>：从当日出发时间（默认 09:00，Day 可改）起，按「交通段时长 → 到达 → 停留 → 离开 → 下一交通段」串联；驻地不占白天时段，日尾追加「宿 · XX」小卡。推算结果实时渲染到日程面板与时间轴。</li>
+    <li><b>停留默认值</b>（按类别，可在 POI 上改）：景点 90 分钟 / 美食 60 / 购物 60 / 自定义点 30 / 车站 20 / 驻地 0（不占白天）。</li>
+    <li><b>改动联动</b>：任一交通方式/停留时长/顺序/出发时间变更 → 该日全量重算（纯本地计算，无网络）。</li>
+    <li><b>展示</b>：到达时刻 HH:MM（Cormorant 数字）+ 停留「90 分」；估算交通段的时刻挂「估」。</li>
+  </ul>
+  <p class="paragraph noindent"><span class="badge">阶段</span> Phase 4（算法）+ Phase 6（时间轴完整呈现）。</p>
+</div>
+
+<h2 class="heading">4.9 地点卡片与搜索</h2>
+<div class="doc-section">
+  <ul class="list">
+    <li><b>宣纸地点卡片（PlaceCard）</b>：点任一 POI 印章弹出。内容：封面图（Unsplash 直链，失败降级水墨渐变+类别图标）+ 名称（+类别小印）+ 评分 ★4.7 + 人均 ¥80 + 营业时间 + 标签胶囊 + 简介 + 操作钮「收藏 / 加入日程 / 导航 / 记一笔 / 题跋」。</li>
+    <li><b>搜索框</b>：编辑器顶部悬浮；范围=当前城市；300ms 防抖；调 WebService 地点搜索 suggestion；结果列表复用 PlaceCard；无 Key 时搜索种子数据 + 热门榜内过滤，并标注「演示数据」。</li>
+    <li><b>导航</b>：卡片点「导航」→ 出行方式弹层 → 移动端 qqmap:// 唤起腾讯地图 App（带起终点坐标）；Web 端降级跳 apis.map.qq.com/uri/v1/ 路线页；均不可用时弹演示提示。</li>
+    <li><b>记一笔</b>：卡片直接新建开销（4.13），预填：日期=该 POI 所在日、关联 poiId、分类按类别猜（美食→餐饮、景点→门票）。</li>
+    <li><b>题跋</b>：卡片一角毛笔图标 → 小楷输入一句手记（≤50 字），存 POI.note，导出呈题跋。</li>
+  </ul>
+  <p class="paragraph noindent"><span class="badge">阶段</span> Phase 5。</p>
+</div>
+
+<h2 class="heading">4.10 自定义落点与朱笔批注</h2>
+<div class="doc-section">
+  <ul class="list">
+    <li><b>长按落点</b>：地图任意处长按 600ms → 墨点涟漪 → 弹「落点」小卡：命名（必填）、选类别（景点/美食/住宿/购物/其他）、可选写一句题跋 → 保存为 source:'custom' 的 POI（逆地理补地址，失败留空）。可收藏、可入日程、可导航——解决腾讯未收录的点（民宿/朋友家/路边小店）。</li>
+    <li><b>朱笔批注（AnnotateLayer）</b>：编辑器右下印钮组「朱笔」开关 → 进入批注模式：拖动鼠标在地图上画朱砂 #A64834 笔迹（canvas 叠加层，线宽 3px，毛笔质感用线宽随手速变化模拟）；「撤销一笔 / 清空 / 完成」三钮；笔迹存 Trip.annotations（屏幕坐标+当时视野中心换算的地理坐标双存），随攻略持久化、导出长卷时一并呈现。典型用法：圈住一片区域「明天就在这片逛」。</li>
+    <li>批注模式与地图操作互斥（开启时禁用拖拽缩放平移手势，防误操作）。</li>
+  </ul>
+  <p class="paragraph noindent"><span class="badge">阶段</span> Phase 5。</p>
+</div>
+
+<h2 class="heading">4.11 天气系统</h2>
+<div class="doc-section">
+  <ul class="list">
+    <li><b>数据</b>：Open-Meteo forecast 端点，按<b>城市中心坐标（WGS-84）</b>查 daily（temperature_2m_max/min + weathercode），映射为 5–16 天预报；坐标换算处显式注释（GCJ→WGS 纠偏，短距离城市中心可用简化偏移）。</li>
+    <li><b>窗口外</b>：行程日期超出预报窗口 → 显示「临近出发自动更新」+ 当月气候参考文案（种子内置各月气候简述），不硬造数据。</li>
+    <li><b>呈现三处</b>：①时间轴每日天气条（图标+温度区间+穿衣建议）②ECharts 5 天预报折线（点击天气条展开）③地图右上角淡青小牌（当前温度，点击跳时间轴）。</li>
+    <li><b>天气诗句</b>（点睛包）：天气条配一句古诗小字，映射表：</li>
+  </ul>
+  <table class="table" data-caption="天气诗句映射表">
+    <colgroup><col style="width:16%"><col style="width:42%"><col style="width:42%"></colgroup>
+    <thead><tr><th>天气</th><th>诗句</th><th>Open-Meteo weathercode 参考</th></tr></thead>
+    <tbody>
+      <tr><td>晴</td><td>水光潋滟晴方好</td><td>0–1</td></tr>
+      <tr><td>多云</td><td>云淡风轻近午天</td><td>2–3</td></tr>
+      <tr><td>雾</td><td>山色空蒙雨亦奇</td><td>45–48</td></tr>
+      <tr><td>雨</td><td>沾衣欲湿杏花雨</td><td>51–67, 80–82</td></tr>
+      <tr><td>雪</td><td>晚来天欲雪，能饮一杯无</td><td>71–77, 85–86</td></tr>
+      <tr><td>雷雨</td><td>黑云翻墨未遮山</td><td>95–99</td></tr>
+    </tbody>
+  </table>
+  <ul class="list">
+    <li><b>穿衣建议</b>：按 tempMax/tempMin 区间映射短句（如 5–12℃「薄羽绒加围巾」）；种子城市内置示例。</li>
+    <li><b>降级</b>：Open-Meteo 慢/失败（国内偶发）→ 用种子天气 + 「临近更新」标识；请求带 8s 超时。</li>
+    <li><b>宣纸呼吸联动</b>：当日雨 → 宣纸背景偏青灰一档（CSS 变量切换）。</li>
+  </ul>
+  <p class="paragraph noindent"><span class="badge">阶段</span> Phase 6。</p>
+</div>
+
+<h2 class="heading">4.12 「今天」视图（行中模式）</h2>
+<div class="doc-section">
+  <ul class="list">
+    <li><b>入口与三态</b>：编辑器卷首横幅与移动底部 Tab 出现「今天」（当 startDate ≤ 今天 ≤ 结束日）；行前打开→「尚未启程」封面（倒计时+锦囊预告）；行后打开→「行程已完」+回顾入口。</li>
+    <li><b>当日清单</b>：当日行程变导航串联清单：当前/下一项自动高亮（按推算时刻）；每项显示预计到达、「导航」「已至」钮；底部当日小结（走了 N 处 / 已花 ¥X）。</li>
+    <li><b>行前锦囊</b>：出发前一天（T-1）出现锦囊形卡片，点按拆封动效（0.4s 展开）：穿衣建议 + 天气诗句 + 预算余量 + 首站与建议出发时刻。仅出现一次（已拆状态持久化）。</li>
+    <li><b>「该出发了」</b>：按「下一项到达时刻 − 交通时长」与当前时间比较，进入窗口即出朱砂提示条：「现在出发，打车 18 分钟，正好赶上日落」；提前 10 分钟开始提示。</li>
+    <li><b>已至盖章</b>：每到一处点「已至」→ POI 印章变灰 + 朱砂小印「已至」0.25s 盖落 + 印泥微渗；盖章记录 visitedAt 支撑回顾态与城市印记。</li>
+    <li><b>雨备方案</b>：当日预报有雨 → 清单顶部轻提示「今日有雨」+「雨天可去」候选（收藏池中博物馆/展馆/美食类）→ 一键替换当天某点（原点退回池）。</li>
+    <li><b>移动端</b>：bottom sheet 顶部 Tab 切「今天 / 记账」；地图背景实时显示当前目标点与导航线。</li>
+  </ul>
+  <p class="paragraph noindent"><span class="badge">阶段</span> Phase 6。</p>
+</div>
+
+<h2 class="heading">4.13 记账系统（ExpenseDrawer）</h2>
+<div class="doc-section">
+  <ul class="list">
+    <li><b>预算环形图</b>（ECharts）：已花/预算两环 + 中心剩余百分比；无预算时显示累计支出。花超 → 环形整体转朱砂 + 「已逾制」细字。</li>
+    <li><b>分类柱状图</b>：餐饮/住宿/交通/门票/购物/其他六类累计。</li>
+    <li><b>明细</b>：按日期分组列表（标题/金额/分类印/关联 POI 链接），增删改：点行编辑（弹层表单：金额/分类/日期/标题/关联 POI/备注）；删除确认+撤销。</li>
+    <li><b>添加表单</b>：金额（元，存分为单位）/ 分类 / 关联 POI（可选，自动带出日期）/ 日期 / 备注。</li>
+    <li><b>三个快捷入口</b>：①抽屉「记一笔」②POI 卡片「记一笔」（预填分类/日期/关联）③交通段保存后 toast「预填打车费 ¥38 · 记一笔」。金额以<b>分</b>存储避免浮点误差。</li>
+  </ul>
+  <p class="paragraph noindent"><span class="badge">阶段</span> Phase 7。</p>
+</div>
+
+<h2 class="heading">4.14 忆游回顾与归档</h2>
+<div class="doc-section">
+  <ul class="list">
+    <li><b>回顾态</b>：攻略结束（今天 > 结束日）后，进入攻略显示回顾页（不进编辑器）：已至印章分布图（每日盖章 POI 落印成排）+ 花费曲线（分类堆叠折线）+ 题跋集（所有 note 以卷轴小楷罗列）+ 行程小结（N 天 N 处盖章 / 总花费 / 交通总时长）。可「再看一眼」进只读编辑器。</li>
+    <li><b>归档</b>：攻略卡菜单「归入已行卷」→ 首页折叠区；可恢复。归档不删数据。</li>
+    <li><b>城市印记升级</b>：攻略全部结束且存在盖章 → 城市印记盖「行」字（完成态）。</li>
+  </ul>
+  <p class="paragraph noindent"><span class="badge">阶段</span> Phase 8。</p>
+</div>
+
+<h2 class="heading">4.15 导出系统</h2>
+<div class="doc-section">
+  <table class="table" data-caption="导出三件套规格">
+    <colgroup><col style="width:18%"><col style="width:46%"><col style="width:36%"></colgroup>
+    <thead><tr><th>导出物</th><th>内容版式</th><th>技术</th></tr></thead>
+    <tbody>
+      <tr><td>国风长卷图片</td><td>1080px 宽竖版：题名+朱砂印 → 城市与日期 → 每日行程块（POI 清单+交通图标+时长）→（可选）预算执行一行 → 落款「拾程 · 丙午年冬」+ 自刻闲章；<b>不含个人记账明细</b></td><td>自绘 canvas 逐块排版导出 PNG；不依赖 html2canvas</td></tr>
+      <tr><td>打印自用版 HTML</td><td>离线自包含可打印：卷首 + 每日清单（时间轴+交通+天气）+ 地图示意（重绘墨线线路小图）+ 记账明细表 + 预算执行</td><td>运行时生成完整 HTML 字符串下载；与主应用同套视觉 token</td></tr>
+      <tr><td>JSON 备份</td><td>全部攻略（含收藏池/印章/题跋/批注）+ 设置（不含 Key）的导出/导入</td><td>设置面板低调入口；导入校验 schema 版本</td></tr>
+    </tbody>
+  </table>
+  <p class="paragraph noindent"><span class="badge">阶段</span> Phase 8。</p>
+</div>
+
+<h2 class="heading">4.16 全程回放（彩蛋）</h2>
+<div class="doc-section">
+  <ul class="list">
+    <li>全览模式点「回放」：小车从 Day 1 首点出发，沿全程线路（含跨城示意线）快进跑完，逐日换线色，经过的 POI 印章依次亮起，时长约 20–40 秒（可暂停/跳日）。</li>
+    <li>用途：行程节奏检查（哪天太赶一目了然）+ 演示效果；诚实标注「演示向」，排在 Phase 9 最后做，时间不够可砍。</li>
+  </ul>
+  <p class="paragraph noindent"><span class="badge">阶段</span> Phase 9。</p>
+</div>
+
+<h2 class="heading">4.17 行迹（旅行历史大地图）</h2>
+<div class="doc-section">
+  <ul class="list">
+    <li><b>定义与数据源（D55）</b>：「旧游」=本应用内已完成（含已归档）的攻略，<b>不做应用外旅行补录</b>；数据全部派生自既有攻略结构（cities/起止日/archived）与已至盖章（visitedAt），零新增采集、零定位权限。图随行程生长为已确认取舍。</li>
+    <li><b>入口与双态（D56）</b>：首页卷首横幅下「印记 · 行迹」小楷双态开关（形制同页签，不单开页面）。「印记」态=现状视角（城市印记快捷入口）；「行迹」态=历史聚合视角，只渲染已结束攻略。默认印记态，选择会话级记忆。</li>
+    <li><b>收录与印形（D56）</b>：已结束且有盖章→朱砂实印「行」字；已结束但零盖章→淡墨虚边「行」印（去了没留印，弱化呈现）；未结束不出现。一城一印，多卷游数进小卷表达，地图保持干净。</li>
+    <li><b>连线规则（D56）</b>：仅<b>同一攻略内</b>的跨城段用淡墨示意虚线串联（形制同 D04，按 DayPlan 城市顺序）；<b>不同攻略之间不连线</b>——跨卷连线暗示了未发生的移动。墨线 hover 高亮并注「{城A}→{城B} · N 日」。</li>
+    <li><b>年份筛选（D56）</b>：数据跨年时行迹态卷首出淡墨年份胶囊（全部/2025/2026…）；单年不渲染，不占留白。</li>
+    <li><b>该城行迹小卷（D57）</b>：点行迹印记出宣纸小卷弹层——按时间列该城全部已结束攻略（日期 / 盖章 N 枚 / 题跋 N 则 / 归档标记），点任一卷直进其忆游回顾；「三至大理」的归处。</li>
+    <li><b>统计行（D58）</b>：行迹态卷首一行小楷「历 N 省 M 城 · 在路 X 日 · 盖章 Y 枚」。城=去重城市数、在路日=Σ(结束日−开始日+1)、盖章=Σ已至数；省数依赖 cities[].province（向导选址时从 WebService 返回值落库，无 Key 走内置城市表映射），<b>province 缺失时省数不显示</b>，不以猜测凑数（诚实原则）。</li>
+    <li><b>动效</b>：切入行迹态行印 stagger 落印 + 卷内墨线描边绘制，规格见 5.7 分场景清单。</li>
+  </ul>
+  <p class="paragraph noindent"><span class="badge">阶段</span> Phase 10。</p>
+</div>
+<!-- ===== 五、视觉设计规范 ===== -->
+<h1 class="heading" id="sec-5">五、视觉设计规范（宋韵雅致）</h1>
+
+<h2 class="heading">5.1 设计理念</h2>
+<div class="doc-section">
+  <p class="paragraph noindent"><b>Purpose</b>：把「出发前做功课」与「在路上解决衣食住行」合二为一的国风旅行地图——吃/住/玩/天气串成一张看得全的水墨长卷，每笔开销、每段时间都在宣纸上有据可查。</p>
+  <p class="paragraph"><b>Aesthetic Direction</b>：宋韵雅致 · 文人山水长卷。以宋代文人审美为骨：米白宣纸为底，淡青（汝窑天青）与淡赭为主色，墨色勾线，朱砂小印点睛。追求「留白、克制、雅致」——大面积空纸、细劲线条、低饱和设色，如一幅可交互的《千里江山》手卷局部，<b>而非信息仪表盘</b>。地图是水墨山水底图（远山淡影、河流留白、宣纸纤维纹理），POI 用篆刻印章形标记与毛笔小楷标注，路线似一笔淡墨勾连。</p>
+  <p class="paragraph">负面清单（用户验收红线）：无紫色、无蓝紫渐变；禁 emoji 图标；非居中卡片堆叠的模板感；禁 Inter/Roboto/Arial/system-ui 字体。</p>
+</div>
+
+<h2 class="heading">5.2 色板（Design Token）</h2>
+<div class="doc-section">
+  <div class="swatch-row" data-cols="4">
+    <div class="swatch"><div class="chip" style="background:#F2ECE0;"></div><div class="info"><b>宣纸底 #F2ECE0</b>全局背景、纸面容器</div></div>
+    <div class="swatch"><div class="chip" style="background:#8FA9A6;"></div><div class="info"><b>汝窑天青 #8FA9A6</b>主色：链接、步行线、天气角牌、选中态</div></div>
+    <div class="swatch"><div class="chip" style="background:#B08D70;"></div><div class="info"><b>淡赭石 #B08D70</b>副色：打车线、次级按钮、暖调分隔</div></div>
+    <div class="swatch"><div class="chip" style="background:#2C2A26;"></div><div class="info"><b>墨色 #2C2A26</b>正文、线条、印章篆文</div></div>
+  </div>
+  <div class="swatch-row" data-cols="4">
+    <div class="swatch"><div class="chip" style="background:#A64834;"></div><div class="info"><b>朱砂 #A64834</b>强调：印章、警示、小车、批注朱笔</div></div>
+    <div class="swatch"><div class="chip" style="background:#FAF6ED;"></div><div class="info"><b>云雾白 #FAF6ED</b>水面留白、卡片高光、印章底</div></div>
+    <div class="swatch"><div class="chip" style="background:#B9C6C4;"></div><div class="info"><b>远山青灰 #B9C6C4</b>山影、公交线、禁用态</div></div>
+    <div class="swatch"><div class="chip" style="background:#6E6A62;"></div><div class="info"><b>浅墨灰 #6E6A62</b>注释、次要文字、经纬网</div></div>
+  </div>
+  <table class="table" data-caption="色板使用规则">
+    <colgroup><col style="width:22%"><col style="width:78%"></colgroup>
+    <thead><tr><th>规则</th><th>说明</th></tr></thead>
+    <tbody>
+      <tr><td>面积配比</td><td>宣纸底约 70%、留白优先；青/赭合计不超过 20%；朱砂仅在「点睛」（印章/警示/小车/批注）处出现，占比 &lt;5%。</td></tr>
+      <tr><td>状态色</td><td>进行中=朱砂条；完成/已至=印章变灰 + 朱砂印；演示/估算=朱砂小字「估」「演示数据」徽章。</td></tr>
+      <tr><td>宣纸呼吸</td><td>夜间（或 prefers-color-scheme:dark 不做，仅按时刻）宣纸整体偏暖偏暗 4%；雨天偏青灰 4%。用 CSS 变量 --paper 调制，克制到「感觉到了但说不出来」。</td></tr>
+      <tr><td>Tailwind 落地</td><td>以上 token 写入 tailwind.config.js（paper/ink/cyanq/ochre/cinnabar/mist/hill/gray-ink），组件只引用语义色不写死 hex。</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<h2 class="heading">5.3 字体系统</h2>
+<div class="doc-section">
+  <table class="table" data-caption="字体规格">
+    <colgroup><col style="width:22%"><col style="width:26%"><col style="width:52%"></colgroup>
+    <thead><tr><th>字体</th><th>角色</th><th>规格</th></tr></thead>
+    <tbody>
+      <tr><td>Noto Serif SC</td><td>宋韵核心：正文/标题/界面</td><td>标题 600–700 字重；正文 15px/1.8；小字 12px 400。覆盖简体常用字子集化。</td></tr>
+      <tr><td>Ma Shan Zheng</td><td>题字点缀：卷首题名、城市题签、Day 主题标题</td><td>仅少量大字号（≥18px）使用；子集化只保留会用到的字符集。</td></tr>
+      <tr><td>Cormorant Garamond</td><td>数字/金额/日期时刻</td><td>600 字重；时刻 HH:MM、金额 ¥、日期戳一律此字体，衬线优雅与宋体呼应。</td></tr>
+    </tbody>
+  </table>
+  <ul class="list">
+    <li><b>加载策略</b>：构建期子集化 WOFF2 自托管入 dist/fonts（离线自包含 + 国内访问稳，不依赖运行时 CDN），font-display: swap；fallback 栈 serif（Georgia, "Songti SC", SimSun）。</li>
+    <li><b>印章篆文</b>：印章内文字用「印篆意象」处理——以 Ma Shan Zheng 加字间距+方形外框模拟，不追求真正篆体字库（省一个字库依赖）。</li>
+  </ul>
+</div>
+
+<h2 class="heading">5.4 布局骨架与线框</h2>
+<div class="doc-section">
+  <p class="paragraph noindent"><b>首页（一图一轴，D60/D61）</b>：中国地图满幅为唯一舞台，右缘竖挂轴收纳全部功能——收起 48px 轴条 / 展开 340px 覆盖式卷面板，站标题签落左上，整页只有「图 + 轴」两个元素。<b>首页气韵（D63–D68）</b>：地图四档晕墨 + 山水笔意（山脉笔触/江河留白），印记有机化（微旋/两档/落印入场），最近编辑攻略城市为画眼（呼吸圈 + 题签挂线），竖排压边题签，入场序列两动克制。桌面编辑器：地图满屏为基底，信息层如「题在画卷上的墨迹与钤印」。左侧竖排日程以细墨线串联（仿卷轴题签，<b>非票根旋转</b>）；顶部卷首横幅（细双边线+朱砂小印）；标记/卡片带宣纸质感与极淡投影；抽屉如卷轴徐徐展开；右下浮动朱砂印钮。非对称栅格（左窄栏+中央大地图+右下 FAB），大量留白。</p>
+  <figure class="image" data-caption="桌面编辑器布局线框（示意）" data-float="center">
+    <svg class="wire" viewBox="0 0 720 400" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="桌面编辑器布局线框图">
+      <rect x="2" y="2" width="716" height="396" fill="#fbf8f1" stroke="#e8dcbf"/>
+      <rect x="2" y="2" width="716" height="34" fill="#f3ecdc" stroke="#e8dcbf"/>
+      <text x="360" y="22" text-anchor="middle" font-size="11" fill="#5d4a1e">卷首横幅：标题 · 自刻闲章 · 预算细字 · 「今天」入口</text>
+      <rect x="2" y="36" width="64" height="362" fill="#ffffff" stroke="#e8dcbf"/>
+      <text x="34" y="44" text-anchor="middle" font-size="9" fill="#6b5e50">日程栏</text>
+      <rect x="10" y="50" width="48" height="16" fill="#faf0d5" stroke="#ecd5a2"/><text x="34" y="62" text-anchor="middle" font-size="8" fill="#473817">Day 1 ·3</text>
+      <rect x="10" y="72" width="48" height="16" fill="#f2ece0" stroke="#ecd5a2"/><text x="34" y="84" text-anchor="middle" font-size="8" fill="#473817">Day 2 ·4</text>
+      <rect x="10" y="94" width="48" height="16" fill="#f2ece0" stroke="#ecd5a2"/><text x="34" y="106" text-anchor="middle" font-size="8" fill="#473817">Day 3 ·2</text>
+      <rect x="10" y="116" width="48" height="16" fill="#f2ece0" stroke="#ecd5a2"/><text x="34" y="128" text-anchor="middle" font-size="8" fill="#473817">Day 4 ·3</text>
+      <rect x="10" y="138" width="48" height="16" fill="#f2ece0" stroke="#ecd5a2"/><text x="34" y="150" text-anchor="middle" font-size="8" fill="#473817">Day 5 ·2</text>
+      <text x="34" y="170" text-anchor="middle" font-size="8" fill="#a37d14">＋加一天</text>
+      <rect x="10" y="300" width="48" height="20" fill="#fdf6e3" stroke="#ecd5a2"/><text x="34" y="313" text-anchor="middle" font-size="8" fill="#473817">心愿池 5</text>
+      <rect x="66" y="36" width="652" height="362" fill="#f2ece0" stroke="#d9cdb5"/>
+      <polygon points="120,340 180,296 240,340" fill="#b9c6c4" opacity="0.45"/>
+      <polygon points="300,362 380,306 460,362" fill="#b9c6c4" opacity="0.4"/>
+      <polygon points="520,330 570,298 620,330" fill="#b9c6c4" opacity="0.45"/>
+      <ellipse cx="400" cy="120" rx="130" ry="28" fill="#faf6ed" opacity="0.8"/>
+      <text x="400" y="124" text-anchor="middle" font-size="9" fill="#6e6a62">洱海 · 水面留白</text>
+      <rect x="240" y="44" width="200" height="24" rx="12" fill="#ffffff" stroke="#e8dcbf"/>
+      <text x="340" y="60" text-anchor="middle" font-size="9" fill="#6e6a62">搜索框（悬浮 · 当前城市）</text>
+      <rect x="560" y="44" width="92" height="22" fill="#eef2ef" stroke="#b9c6c4"/>
+      <text x="606" y="59" text-anchor="middle" font-size="9" fill="#4d5c59">18° · 晴</text>
+      <path d="M205,255 L265,305" stroke="#8fa9a6" stroke-width="2" stroke-dasharray="8 6" fill="none"/>
+      <path d="M325,228 L205,255" stroke="#b08d70" stroke-width="3" fill="none"/>
+      <rect x="224" y="272" width="14" height="8" rx="2" fill="#a64834"/>
+      <circle cx="231" cy="282" r="3.5" fill="#a64834"/>
+      <rect x="200" y="248" width="10" height="10" fill="#2c2a26"/>
+      <text x="200" y="240" font-size="8" fill="#6e6a62">景点印</text>
+      <rect x="260" y="298" width="10" height="10" fill="#b08d70"/>
+      <text x="252" y="318" font-size="8" fill="#6e6a62">美食</text>
+      <rect x="318" y="220" width="12" height="12" fill="#2c2a26"/>
+      <path d="M318,232 v-8 h12 v8" stroke="#5d4a1e" fill="none"/>
+      <text x="312" y="212" font-size="8" fill="#6e6a62">驻地(墨顶)</text>
+      <polyline points="360,180 380,200 370,215 395,225 410,205" stroke="#a64834" stroke-width="2" fill="none" opacity="0.85"/>
+      <text x="372" y="172" font-size="8" fill="#a64834">朱笔批注</text>
+      <rect x="150" y="120" width="168" height="128" rx="6" fill="#ffffff" stroke="#e8dcbf"/>
+      <rect x="158" y="128" width="70" height="8" fill="#5d4a1e"/>
+      <rect x="158" y="142" width="152" height="48" fill="#f2ece0"/>
+      <text x="234" y="170" text-anchor="middle" font-size="8" fill="#6e6a62">封面图 / 水墨占位</text>
+      <rect x="158" y="196" width="30" height="10" fill="#faf0d5" stroke="#ecd5a2"/><text x="173" y="204" text-anchor="middle" font-size="7" fill="#a37d14">★4.7</text>
+      <rect x="192" y="196" width="36" height="10" fill="#faf0d5" stroke="#ecd5a2"/><text x="210" y="204" text-anchor="middle" font-size="7" fill="#a37d14">¥80 人均</text>
+      <rect x="158" y="214" width="34" height="12" fill="#ffffff" stroke="#ecd5a2"/><text x="175" y="223" text-anchor="middle" font-size="7" fill="#473817">收藏</text>
+      <rect x="196" y="214" width="34" height="12" fill="#ffffff" stroke="#ecd5a2"/><text x="213" y="223" text-anchor="middle" font-size="7" fill="#473817">加行程</text>
+      <rect x="234" y="214" width="34" height="12" fill="#a64834"/><text x="251" y="223" text-anchor="middle" font-size="7" fill="#fdf6e3">导航</text>
+      <rect x="158" y="232" width="48" height="12" fill="#ffffff" stroke="#ecd5a2"/><text x="182" y="241" text-anchor="middle" font-size="7" fill="#473817">记一笔</text>
+      <text x="234" y="112" text-anchor="middle" font-size="8" fill="#6e6a62">宣纸地点卡片</text>
+      <rect x="470" y="76" width="230" height="272" rx="8" fill="#ffffff" stroke="#e8dcbf"/>
+      <rect x="480" y="86" width="100" height="20" fill="#faf0d5" stroke="#ecd5a2"/><text x="530" y="100" text-anchor="middle" font-size="9" fill="#473817">行程时间轴</text>
+      <rect x="584" y="86" width="106" height="20" fill="#ffffff" stroke="#ecd5a2"/><text x="637" y="100" text-anchor="middle" font-size="9" fill="#6b5e50">记账本</text>
+      <line x1="500" y1="130" x2="500" y2="320" stroke="#ecd5a2" stroke-width="2"/>
+      <circle cx="500" cy="140" r="4" fill="#c9991f"/><text x="512" y="144" font-size="8" fill="#6e6a62">09:00 出发</text>
+      <circle cx="500" cy="180" r="4" fill="#2c2a26"/><text x="512" y="184" font-size="8" fill="#6e6a62">09:18 崇圣寺三塔 ·90分</text>
+      <circle cx="500" cy="220" r="4" fill="#8fa9a6"/><text x="512" y="224" font-size="8" fill="#6e6a62">步行 22 分（脚印）</text>
+      <circle cx="500" cy="260" r="4" fill="#b08d70"/><text x="512" y="264" font-size="8" fill="#6e6a62">12:10 大理古城 · 诗</text>
+      <circle cx="500" cy="300" r="4" fill="#2c2a26"/><text x="512" y="304" font-size="8" fill="#6e6a62">宿 · 洱海之门（夜）</text>
+      <text x="585" y="70" text-anchor="middle" font-size="8" fill="#6e6a62">右侧抽屉 · 卷轴展开</text>
+      <circle cx="668" cy="380" r="16" fill="#a64834"/>
+      <text x="668" y="385" text-anchor="middle" font-size="10" fill="#fdf6e3">印</text>
+      <text x="640" y="362" font-size="8" fill="#a64834">朱砂印钮 FAB 组</text>
+    </svg>
+    <figcaption style="font-size:12px;color:#6b5e50;">桌面编辑器布局线框：地图满屏 + 左日程栏 + 右抽屉 + 宣纸卡片弹层 + 朱笔批注 + 小车/脚印线路</figcaption>
+  </figure>
+  <p class="paragraph"><b>移动端</b>：地图满屏恒为背景 + 精简 Header + bottom sheet 三档可拖拽（Peek 72px / Half 45% / Full 92%）+ 底部 Tab（今天/行程/时间轴/记账/心愿池，只切抽屉内容）。地图上元素（印章/线路/角牌）与桌面一致。</p>
+  <figure class="image" data-caption="移动端布局线框（示意）" data-float="center">
+    <svg class="wire" viewBox="0 0 190 400" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="移动端布局线框图">
+      <rect x="2" y="2" width="186" height="396" fill="#fbf8f1" stroke="#e8dcbf"/>
+      <rect x="2" y="2" width="186" height="26" fill="#f3ecdc" stroke="#e8dcbf"/>
+      <text x="95" y="18" text-anchor="middle" font-size="9" fill="#5d4a1e">精简 Header · 标题+印钮</text>
+      <rect x="2" y="28" width="186" height="294" fill="#f2ece0" stroke="#d9cdb5"/>
+      <polygon points="40,160 70,120 100,160" fill="#b9c6c4" opacity="0.45"/>
+      <ellipse cx="120" cy="80" rx="52" ry="14" fill="#faf6ed" opacity="0.8"/>
+      <rect x="120" y="36" width="56" height="16" fill="#eef2ef" stroke="#b9c6c4"/>
+      <text x="148" y="47" text-anchor="middle" font-size="8" fill="#4d5c59">18° 晴</text>
+      <rect x="60" y="130" width="8" height="8" fill="#2c2a26"/><text x="49" y="147" font-size="7" fill="#6e6a62">印</text>
+      <path d="M64,134 L84,150" stroke="#8fa9a6" stroke-width="2" stroke-dasharray="6 4"/>
+      <rect x="80" y="146" width="8" height="8" fill="#b08d70"/>
+      <circle cx="160" cy="300" r="13" fill="#a64834"/><text x="160" y="305" text-anchor="middle" font-size="9" fill="#fdf6e3">印</text>
+      <line x1="8" y1="34" x2="182" y2="34" stroke="#c9991f" stroke-width="1" stroke-dasharray="4 4" opacity="0.6"/>
+      <text x="62" y="52" text-anchor="middle" font-size="7" fill="#a37d14">Full 92%（sheet 顶至此）</text>
+      <line x1="8" y1="220" x2="182" y2="220" stroke="#c9991f" stroke-width="1" stroke-dasharray="4 4" opacity="0.6"/>
+      <text x="95" y="238" text-anchor="middle" font-size="7" fill="#a37d14">Half 45%</text>
+      <rect x="2" y="288" width="186" height="110" fill="#ffffff" stroke="#e8dcbf"/>
+      <rect x="75" y="294" width="40" height="3" rx="1.5" fill="#ecd5a2"/>
+      <rect x="10" y="302" width="40" height="14" fill="#faf0d5" stroke="#ecd5a2"/><text x="30" y="312" text-anchor="middle" font-size="7" fill="#473817">今天</text>
+      <rect x="54" y="302" width="40" height="14" fill="#ffffff" stroke="#ecd5a2"/><text x="74" y="312" text-anchor="middle" font-size="7" fill="#6b5e50">行程</text>
+      <rect x="98" y="302" width="40" height="14" fill="#ffffff" stroke="#ecd5a2"/><text x="118" y="312" text-anchor="middle" font-size="7" fill="#6b5e50">时间轴</text>
+      <rect x="142" y="302" width="40" height="14" fill="#ffffff" stroke="#ecd5a2"/><text x="162" y="312" text-anchor="middle" font-size="7" fill="#6b5e50">记账</text>
+      <rect x="10" y="324" width="170" height="24" fill="#fdf6e3" stroke="#ecd5a2"/>
+      <text x="18" y="338" font-size="8" fill="#473817">09:18 崇圣寺三塔</text>
+      <rect x="140" y="328" width="34" height="14" fill="#a64834"/><text x="157" y="338" text-anchor="middle" font-size="7" fill="#fdf6e3">已至</text>
+      <rect x="10" y="354" width="170" height="24" fill="#ffffff" stroke="#ecd5a2"/>
+      <text x="18" y="368" font-size="8" fill="#473817">10:50 步行 22 分 → 古城</text>
+      <rect x="10" y="384" width="170" height="14" fill="#f2ece0" stroke="#ecd5a2"/>
+      <text x="95" y="394" text-anchor="middle" font-size="7" fill="#6e6a62">Peek 72px（拖拽把手）</text>
+    </svg>
+    <figcaption style="font-size:12px;color:#6b5e50;">移动端布局线框：地图满屏 + bottom sheet 三档（Full/Half/Peek 虚线标尺）+ 底部 Tab + 「已至」盖章钮</figcaption>
+  </figure>
+</div>
+
+<h2 class="heading">5.5 组件库规格</h2>
+<div class="doc-section">
+  <table class="table" data-caption="核心组件视觉规格">
+    <colgroup><col style="width:18%"><col style="width:44%"><col style="width:38%"></colgroup>
+    <thead><tr><th>组件</th><th>视觉规格</th><th>状态与细节</th></tr></thead>
+    <tbody>
+      <tr><td>宣纸卡片</td><td>底 #FAF6ED，边框 1px #E8DCBF，圆角 8px，投影 0 1px 4px rgba(44,42,38,.08)；内部细双边线分区</td><td>悬浮时投影加深一档；加载中显示水墨渐变+类别图标占位</td></tr>
+      <tr><td>卷轴抽屉</td><td>右侧 380px（桌面）；顶缘卷轴轴头造型（两端小圆头）；展开 0.3s ease-out「徐展」</td><td>折叠时只留轴头贴边；ESC/点遮罩关闭</td></tr>
+      <tr><td>细双边线</td><td>横幅/题签用 1px + 3px 双线（外细内更细，间距 2px），墨色 40% 透明度</td><td>替代粗边框，全部容器统一此语言</td></tr>
+      <tr><td>题签（Day 栏）</td><td>竖排文字 + 细墨线串联各 Day；选中日墨线加深、题签底下沉 2px</td><td>行中攻略当日题签挂朱砂小点</td></tr>
+      <tr><td>标签胶囊</td><td>12px 小字，底 #FAF0D5、字 #A37D14、边 #ECD5A2、圆角 20px</td><td>POI 标签、车次牌、分类印复用</td></tr>
+      <tr><td>朱砂印钮 FAB</td><td>36px 方形（非圆），底 #A64834，印文白字 Ma Shan Zheng；子钮扇形展开</td><td>按下印泥微渗动效 0.2s</td></tr>
+      <tr><td>「演示数据」徽章</td><td>常驻右上（无 Key 时），朱砂描边小印样式 10px</td><td>诚实标识，见 D 诚实原则</td></tr>
+      <tr><td>空态</td><td>卷首空白页：留白 + 一句邀请语（Ma Shan Zheng 18px）+ 印钮</td><td>所有空列表/空搜索统一此语言</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<h2 class="heading">5.6 印章体系（统一形制）</h2>
+<div class="doc-section">
+  <table class="table" data-caption="印章清单与用法">
+    <colgroup><col style="width:20%"><col style="width:18%"><col style="width:62%"></colgroup>
+    <thead><tr><th>印章</th><th>形制</th><th>用法与状态</th></tr></thead>
+    <tbody>
+      <tr><td>站标印「拾程」</td><td>34px 方形朱砂</td><td>顶栏 / 加载态 / 导出落款；印文 Ma Shan Zheng 白字。</td></tr>
+      <tr><td>第 N 日小印</td><td>18px 方形墨色</td><td>POI 图钉携带当日序数；选中日转朱砂。</td></tr>
+      <tr><td>类别印</td><td>14px 篆书意象</td><td>吃=赭、住=青（墨顶驻地另加屋顶线）、玩=墨、自定义=朱砂描边空心。</td></tr>
+      <tr><td>图层小印</td><td>16px 篆书</td><td>右侧图钉组开/关吃住玩显隐；开启实底、关闭描边。</td></tr>
+      <tr><td>城市印记</td><td>22px 方形</td><td>未出发墨 / 进行中朱砂 / 完成盖「行」字。</td></tr>
+      <tr><td>「已至」印</td><td>16px 圆角方</td><td>盖章 0.25s 落印 + 印泥微渗；盖后原印章变灰。</td></tr>
+      <tr><td>自刻闲章</td><td>26px 方形朱砂</td><td>攻略卡与导出落款；两字印文用户自定义。</td></tr>
+      <tr><td>「估」「满」小印</td><td>10px 朱砂小字</td><td>估算段、过载 Day、演示数据的诚实标识。</td></tr>
+    </tbody>
+  </table>
+  <p class="paragraph noindent"><b>印泥微渗</b>：印章落定瞬间 0.2s 边缘向外 1–2px 的朱砂晕染（box-shadow 动画），是整个印章体系的灵魂细节，所有「印」的动效共用。</p>
+</div>
+
+<h2 class="heading">5.7 动效体系（晕 · 落 · 展 · 行）</h2>
+<div class="doc-section">
+  <p class="paragraph noindent"><b>动效观（D59）</b>：动效不是装饰，是「笔墨的物理感」——全站动效统一归入四个语法动词，新增动效先归入其一，归不进去的就不做；所有动效一律经 <b>src/lib/motion.ts</b> 调用（全站唯一动效入口，便于统一降级）。</p>
+  <table class="table" data-caption="动效四语法">
+    <colgroup><col style="width:10%"><col style="width:24%"><col style="width:42%"><col style="width:24%"></colgroup>
+    <thead><tr><th>动词</th><th>意象</th><th>用于</th><th>典型载体</th></tr></thead>
+    <tbody>
+      <tr><td><b>晕</b></td><td>墨滴入纸，由点及面</td><td>遮罩、加载、聚焦、背景压暗、消散（反向）</td><td>Lottie / CSS radial mask</td></tr>
+      <tr><td><b>落</b></td><td>印章盖落，力透纸背</td><td>一切「确认」反馈：已至盖章、城市印记、入池、创建确认</td><td>anime scale + CSS 印泥微渗</td></tr>
+      <tr><td><b>展</b></td><td>卷轴徐展，信笺启封</td><td>一切「打开」：抽屉、弹窗、锦囊、回顾页、小卷</td><td>CSS translate/clip-path</td></tr>
+      <tr><td><b>行</b></td><td>笔走龙蛇，车马行路</td><td>一切「过程」：描边绘制、沿路径运动、数字滚动</td><td>anime stroke-dashoffset / path</td></tr>
+    </tbody>
+  </table>
+  <p class="paragraph noindent"><b>三纪律</b>：① <b>反馈优先</b>——用户操作的反馈动效（按压/盖章/入池）永不省略，装饰动效可砍；② <b>一屏两动</b>——同屏非反馈动效并发 ≤2，stagger 单枚间隔 30–60ms、整组 ≤1.2s；③ <b>可静可断</b>——prefers-reduced-motion 全站降为 ≤120ms 透明度简动，低端机走 6.9 降级矩阵，动效永不长时间拦截点击。</p>
+  <table class="table" data-caption="动效令牌">
+    <colgroup><col style="width:16%"><col style="width:44%"><col style="width:40%"></colgroup>
+    <thead><tr><th>令牌</th><th>值</th><th>用途</th></tr></thead>
+    <tbody>
+      <tr><td>--m-fast</td><td>120ms · ease-out</td><td>hover、按压、选中微移、墨色加深</td></tr>
+      <tr><td>--m-stamp</td><td>250ms · cubic-bezier(.34,1.56,.64,1)</td><td>落印回弹（落）</td></tr>
+      <tr><td>--m-unfold</td><td>300ms · cubic-bezier(.22,1,.36,1)</td><td>抽屉/弹窗/卡片展开（展）</td></tr>
+      <tr><td>--m-wash</td><td>800ms · cubic-bezier(.4,0,.2,1)</td><td>晕染遮罩与转场段（晕）</td></tr>
+      <tr><td>--m-draw</td><td>600–1200ms · ease-out（按线长）</td><td>墨线/曲线描边绘制（行）</td></tr>
+      <tr><td>--m-car</td><td>linear 匀速</td><td>小车/脚印沿路径行进</td></tr>
+      <tr><td>--m-count</td><td>600ms · rAF</td><td>数字滚动（统计行/小结/预算）</td></tr>
+    </tbody>
+  </table>
+  <p class="paragraph noindent"><b>分场景动效清单</b>（Phase 11 按此逐条铺装与验收）：语法列标注归属动词：</p>
+  <table class="table" data-caption="分场景动效清单">
+    <colgroup><col style="width:10%"><col style="width:20%"><col style="width:46%"><col style="width:24%"></colgroup>
+    <thead><tr><th>视图</th><th>场景</th><th>规格</th><th>载体</th></tr></thead>
+    <tbody>
+      <tr><td>全局</td><td>按钮按压</td><td>scale .96 + 印泥微渗 120ms（落）</td><td>CSS</td></tr>
+      <tr><td>全局</td><td>弹窗启封</td><td>宣纸卡淡入 + 上移 8px + 毛玻璃 backdrop-blur 渐显 240ms（展）</td><td>CSS</td></tr>
+      <tr><td>全局</td><td>抽屉徐展</td><td>0.3s 卷轴展开 + 轴头旋转 8°（展）</td><td>CSS</td></tr>
+      <tr><td>全局</td><td>toast 细条</td><td>顶部滑入 0.2s，含撤销钮停 5s</td><td>CSS</td></tr>
+      <tr><td>全局</td><td>加载态</td><td>水墨晕染圆扩散 + 印章落定（晕/落）</td><td>Lottie</td></tr>
+      <tr><td>全局</td><td>路由切换</td><td>宣纸淡入 200ms；晕染为下钻专属，不重播（晕）</td><td>CSS</td></tr>
+      <tr><td>全局</td><td>数字滚动</td><td>600ms rAF 计数（行）</td><td>motion.ts countup</td></tr>
+      <tr><td>全局</td><td>列表进场</td><td>卡片 stagger 淡入上移 12px、40ms/张，仅首屏一次（行）</td><td>anime stagger</td></tr>
+      <tr><td>首页</td><td>城市印记 hover</td><td>scale 1.1 + 城名毛笔小楷淡入 120ms</td><td>CSS</td></tr>
+      <tr><td>首页</td><td>印记↔行迹切换</td><td>开关滑块 200ms；切入行迹态行印 stagger 落印 40ms/枚 + 卷内墨线描边 800ms（落/行）</td><td>anime</td></tr>
+      <tr><td>首页</td><td>行迹统计行</td><td>数字滚动 600ms（行）</td><td>motion.ts countup</td></tr>
+      <tr><td>首页</td><td>攻略卡 hover</td><td>上浮 2px + 边框墨色加深 120ms</td><td>CSS</td></tr>
+      <tr><td>首页</td><td>空态邀请语</td><td>墨迹渐显 800ms（晕）</td><td>CSS</td></tr>
+      <tr><td>下钻</td><td>城市下钻转场</td><td>晕染遮罩 0.8s + flyTo + 卷轴横幅徐展 + 落印；三段合计 ≤2s，返回反向（晕/展/落）</td><td>Lottie + GL</td></tr>
+      <tr><td>下钻</td><td>热门印章进场</td><td>逐枚 stagger 落印 30ms/枚（落）</td><td>anime</td></tr>
+      <tr><td>下钻</td><td>天气角牌</td><td>右侧滑入 200ms（展）</td><td>CSS</td></tr>
+      <tr><td>编辑器</td><td>加入日程</td><td>地图印章落印 250ms + 时间轴行滑入 200ms（落）</td><td>anime + CSS</td></tr>
+      <tr><td>编辑器</td><td>拖拽排序</td><td>提起 scale 1.02 + 阴影，落位回弹 150ms</td><td>CSS + FLIP</td></tr>
+      <tr><td>编辑器</td><td>删除/撤销</td><td>墨迹消散（opacity + blur 4px）200ms（晕反向）</td><td>CSS</td></tr>
+      <tr><td>编辑器</td><td>选中 POI</td><td>印章轻浮 ±2px 1.6s 循环 + 时间轴行墨条高亮</td><td>CSS</td></tr>
+      <tr><td>编辑器</td><td>收藏入池</td><td>印章飞入池徽章（FLIP 300ms）+ 徽章弹跳 +1（落）</td><td>motion.ts FLIP</td></tr>
+      <tr><td>编辑器</td><td>交通段切换</td><td>旧线淡出 → 新线描边绘制 600ms + 小车沿新路径（行）</td><td>anime</td></tr>
+      <tr><td>编辑器</td><td>步行脚印</td><td>沿路径逐枚浮现 60ms stagger（行）</td><td>anime</td></tr>
+      <tr><td>编辑器</td><td>小车/小人缓动</td><td>沿 path 点列插值，1 段 2–4s 循环或单程（行）；低端机降级静态线+时长牌</td><td>anime</td></tr>
+      <tr><td>编辑器</td><td>预算环形</td><td>进场扫描绘制 + 超支朱砂线呼吸 2s 循环（行）</td><td>ECharts + CSS</td></tr>
+      <tr><td>编辑器</td><td>朱笔批注</td><td>落笔跟手（零延迟）、收笔微渗</td><td>rough-notation</td></tr>
+      <tr><td>今天</td><td>该出发了</td><td>朱砂条卷轴滑入 240ms + 呼吸 2s 循环（展/行）</td><td>CSS</td></tr>
+      <tr><td>今天</td><td>已至盖章</td><td>0.25s scale 1.4→1 + 印泥微渗（落）</td><td>anime + CSS</td></tr>
+      <tr><td>今天</td><td>当前项切换</td><td>高亮墨条 FLIP 平移 200ms</td><td>motion.ts FLIP</td></tr>
+      <tr><td>今天</td><td>雨备换点</td><td>旧章墨散 200ms + 新章落印 250ms（晕/落）</td><td>anime</td></tr>
+      <tr><td>回顾</td><td>进入回顾</td><td>卷轴横展 600ms（展）</td><td>anime</td></tr>
+      <tr><td>回顾</td><td>印章分布</td><td>逐枚盖章 stagger 60ms + 微渗（落）</td><td>anime</td></tr>
+      <tr><td>回顾</td><td>花费曲线</td><td>描边绘制 800ms + 分类依次填色（行）</td><td>ECharts + anime</td></tr>
+      <tr><td>回顾</td><td>题跋集</td><td>逐条卷展 stagger 80ms（展）</td><td>anime</td></tr>
+      <tr><td>行迹</td><td>行迹墨线</td><td>卷内跨城虚线描边 800ms，hover 高亮注「{城A}→{城B} · N 日」（行）</td><td>anime</td></tr>
+      <tr><td>行迹</td><td>行印分布</td><td>切入行迹态 stagger 落印 40ms/枚（落）</td><td>anime</td></tr>
+      <tr><td>行迹</td><td>行迹小卷</td><td>弹层卷展 300ms + 条目 stagger 60ms（展）</td><td>CSS + anime</td></tr>
+      <tr><td>彩蛋</td><td>全程回放</td><td>20–40s 快进，可暂停/跳日（行）</td><td>anime</td></tr>
+      <tr><td>彩蛋</td><td>锦囊拆封</td><td>0.4s 囊体展开为卡，行前一天仅一次（展）</td><td>Lottie</td></tr>
+    </tbody>
+  </table>
+  <p class="paragraph noindent"><b>降级与无障碍</b>：prefers-reduced-motion → 全部令牌压至 120ms 且去位移/缩放（仅透明度）；低端机（6.9 降级矩阵）→ 静态样式线 + 时长牌；CSS 动效只动 transform/opacity/filter（合成层属性），禁止触发 layout 的动效；Lottie 素材仅免费授权、压缩按需加载、超阈值降级 CSS（D54）。</p>
+  <p class="paragraph noindent"><b>实现载体映射（D54/D59）</b>：描边绘制、沿路径、落印缩放、stagger——anime.js v4；水墨晕染转场、锦囊拆封、印泥微渗——Lottie JSON 素材（public/lottie/）；朱笔批注笔触与圈选——roughjs/rough-notation；批注画布与撤销栈——vue-konva；抽屉徐展、宣纸呼吸、hover/按压——CSS 过渡；列表重排/徽章飞入 FLIP 与数字滚动——motion.ts 手写工具。GSAP（插件收费）、three.js/WebGL 墨晕 shader（过重）、Rive（资产管线负担）均经评审弃选。</p>
+</div>
+
+<h2 class="heading">5.8 图标与插画边界</h2>
+<div class="doc-section">
+  <ul class="list">
+    <li><b>功能图标</b>：lucide-vue-next 是全站唯一功能图标库（1.5px 线宽默认），色值取自色板墨/青/赭；<b>禁用 emoji</b>（验收红线）。</li>
+    <li><b>装饰插画</b>：印章、卷轴轴头、折扇、毛笔标记、小车/脚印/单车图标为自绘 SVG 插画（属插画系统，不违反统一图标库）——统一 1px 描边 + 低饱和填充，与水墨语言一致。</li>
+    <li><b>线图图钉</b>：POI 标记=印章形（方形+印文+类别色），信息窗用毛笔小楷注名，不用气泡 pin。</li>
+  </ul>
+</div>
+<!-- ===== 六、技术架构 ===== -->
+<h1 class="heading" id="sec-6">六、技术架构</h1>
+
+<h2 class="heading">6.1 技术栈清单</h2>
+<div class="doc-section">
+  <table class="table" data-caption="技术栈与选型理由">
+    <colgroup><col style="width:22%"><col style="width:32%"><col style="width:46%"></colgroup>
+    <thead><tr><th>层</th><th>选型</th><th>理由</th></tr></thead>
+    <tbody>
+      <tr><td>框架</td><td>Vue 3（Composition API + &lt;script setup&gt; + TS）+ Vite 5</td><td>用户指定非 React；SFC 契合「单图+多抽屉」，HMR 利于原型迭代</td></tr>
+      <tr><td>状态</td><td>Pinia：trip / ui / weather / city 四 store</td><td>Vue 官方库，TS 友好；trip 持久化 localStorage</td></tr>
+      <tr><td>路由</td><td>Vue Router 4 · <b>hash 模式</b></td><td>静态托管免 404 兜底；EdgeOne 子路径直接可用</td></tr>
+      <tr><td>样式</td><td>Tailwind CSS <b>v3.4</b>（稳定版，非 v4）</td><td>design token 写入 config（paper/ink/cyanq/ochre/cinnabar…）</td></tr>
+      <tr><td>地图</td><td>TMap JS API GL（视觉层）+ WebService JSONP（数据层）+ URI API（行动层）</td><td>三层分工，见 6.5</td></tr>
+      <tr><td>天气</td><td>Open-Meteo（免 Key）</td><td>1 万次/天非商用足够；种子兜底</td></tr>
+      <tr><td>图表</td><td>ECharts + vue-echarts</td><td>预算环形/分类柱状/天气折线/花费曲线</td></tr>
+      <tr><td>图标</td><td>lucide-vue-next</td><td>唯一功能图标库，禁 emoji（D43）</td></tr>
+      <tr><td>图片</td><td>Unsplash 固定直链</td><td>失败降级 CSS 水墨渐变+类别图标</td></tr>
+      <tr><td>动效</td><td>anime.js v4 + lottie-web + roughjs/rough-notation + vue-konva</td><td>全套组合（D54）：墨线描边与小车沿路径（anime v4 原生 path motion）、晕染/拆囊/落印（Lottie 水墨素材）、朱笔批注手绘质感（rough）、批注画布撤销栈（Konva）；CSS 仅做常规过渡与宣纸呼吸</td></tr>
+      <tr><td>导出</td><td>自绘 canvas（长卷 PNG）+ 运行时 HTML 字符串（打印版）</td><td>不依赖 html2canvas（字体/阴影兼容差）</td></tr>
+      <tr><td>PWA</td><td>手写 manifest + Service Worker</td><td>不引 vite-plugin-pwa，零多余依赖</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<h2 class="heading">6.2 文件结构</h2>
+<div class="doc-section">
+  <pre class="code" data-lang="text"><code>shicheng/（拾程）
+├─ index.html · vite.config.ts(base:'./') · tailwind.config.js · postcss.config.js · tsconfig.json
+├─ public/（manifest.json · sw.js · icons/ · fonts/ 子集 WOFF2 · lottie/ 水墨 JSON 素材）
+├─ scripts/fetch-seed.mjs（构建期连接器拉种子数据 → src/seed）
+├─ src/
+│  ├─ main.ts · App.vue · router/index.ts · styles/global.css（宣纸呼吸 CSS 变量）
+│  ├─ types/index.ts（6.3 全量类型）
+│  ├─ seed/{dali,lijiang,beijing}.ts（真实 POI/路线/天气，source:'seed'）
+│  ├─ stores/{trip,ui,weather,city}.ts（Pinia）
+│  ├─ lib/
+│  │  ├─ tmap.ts（GL 动态加载/初始化/水墨样式）
+│  │  ├─ jsonp.ts（WebService JSONP 封装 + 199 检测 + 缓存）
+│  │  ├─ weatherApi.ts（Open-Meteo + 诗句/穿衣映射）
+│  │  ├─ navigation.ts（URI 唤起 + Web 降级）
+│  │  ├─ projection.ts（SVG 降级底图线性投影）
+│  │  ├─ estimate.ts（直线距离×经验速度估算）
+│  │  ├─ motion.ts（anime.js v4 + lottie-web + rough + FLIP/countup 封装层，全站动效唯一入口·D59）
+│  │  └─ timeline.ts（时间推算纯函数）
+│  ├─ composables/{useMapData,useUndo,useExport}.ts
+│  ├─ views/{MyTripsView,TripEditorView}.vue
+│  └─ components/
+│     ├─ layout/{AppHeader,DayRail,WishlistPanel,FabGroup,CityBadge,ScrollSidebar,MapModeToggle}.vue
+│     ├─ map/{MapCanvas,ChinaInkMap,InkFallbackMap,InkMarker,RouteLayer,
+│     │        SegmentAnimator,WeatherBadge,AnnotateLayer,TrailLayer}.vue
+│     ├─ editor/{DayPanel,PoiSearch,SegmentPicker,TripWizard,SmartAssist}.vue
+│     ├─ panels/{PlaceCard,ItineraryDrawer,ExpenseDrawer,TodayView,
+│     │           ReviewView,RolloutReplay}.vue
+│     └─ overlay/{RouteModal,SettingsModal,KeyGuideModal,ExportModal,TrailCityModal}.vue</code></pre>
+</div>
+
+<h2 class="heading">6.3 数据模型（src/types/index.ts 全量）</h2>
+<div class="doc-section">
+  <pre class="code" data-lang="typescript"><code>export interface LngLat { lng: number; lat: number }   // 统一 GCJ-02（腾讯系）
+
+export type POICategory = 'food' | 'hotel' | 'sight' | 'shop' | 'custom'
+export type PoiRole = 'stop' | 'base'               // stop=途经点 base=驻地锚点（D29）
+export type PoiSource = 'api' | 'seed' | 'custom'
+
+export interface POI {
+  id: string
+  name: string
+  category: POICategory
+  role: PoiRole                                       // hotel 默认 base，可改
+  location: LngLat                                    // GCJ-02
+  address?: string
+  city: string
+  rating?: number                                     // 0-5
+  pricePerPerson?: number                             // 元
+  openTime?: string
+  tags: string[]
+  coverImage?: string                                 // Unsplash 直链，失败→水墨渐变占位
+  intro?: string
+  stayMinutes?: number                                // 未填则按类别默认（4.8）
+  visitedAt?: number                                  // 「已至」盖章时间戳
+  note?: string                                       // 题跋手记 ≤50 字
+  source: PoiSource
+}
+
+export type TransportMode = 'walk' | 'taxi' | 'transit' | 'bike'
+
+export interface TransportSegment {
+  id: string
+  fromPoiId: string
+  toPoiId: string
+  mode: TransportMode
+  durationMin: number
+  distanceKm?: number
+  cost?: number                                       // 元；打车估算/用户改
+  lineNos?: string[]                                  // 公交换乘车次/线路号
+  transferCount?: number
+  path?: LngLat[]                                     // 真实点列或两点直线
+  estimated: boolean                                  // true=直线×经验速度估算（「估」）
+}
+
+export interface DailyWeather {
+  date: string                                         // YYYY-MM-DD
+  code: number                                         // Open-Meteo weathercode
+  text: string                                         // 晴/多云/雨/雪/雾/雷雨
+  poem?: string                                        // 天气诗句（4.11 映射表）
+  tempMax: number; tempMin: number
+  advice: string                                       // 穿衣建议
+}
+
+export interface DayPlan {
+  dayIndex: number                                     // 1-based
+  date?: string                                        // 由 startDate+dayIndex 推出
+  city: string                                         // 跨城时切换聚焦城市
+  title: string                                        // 「Day N · 城市」可改主题日
+  departTime?: string                                  // 默认 '09:00' 可改
+  poiIds: string[]                                     // 有序，驻地 base 单独槽位
+  basePoiId?: string                                  // 驻地锚点
+  segmentIds: string[]                                 // 相邻两点间交通段
+  weather?: DailyWeather
+}
+
+export interface Expense {
+  id: string
+  dayIndex: number
+  date?: string
+  amount: number                                       // 分（避免浮点误差）
+  category: '餐饮' | '住宿' | '交通' | '门票' | '购物' | '其他'
+  title: string
+  poiId?: string
+  note?: string
+  createdAt: number
+}
+
+export interface City { id: string; name: string; center: LngLat; adcode?: string; province?: string }   // province 由向导选址落库（D58），行迹统计省数用
+
+export interface InkStroke {                            // 朱笔批注（D 批注）
+  points: LngLat[]                                     // 落笔时的地理坐标（双存屏幕坐标换算）
+  color: '#A64834'; width: number; createdAt: number
+}
+
+export interface Trip {
+  id: string
+  title: string                                        // 自动「{城市}·N日」可改
+  sealText: string                                     // 自刻闲章两字
+  cities: City[]                                       // 支持跨城
+  startDate?: string                                   // YYYY-MM-DD 可选；驱动今天视图/锦囊/天气
+  days: DayPlan[]
+  pois: Record&lt;string, POI&gt;                            // 本攻略全量 POI（含池/已移出）
+  wishlist: string[]                                  // 收藏池 POI ids
+  segments: Record&lt;string, TransportSegment&gt;
+  expenses: Expense[]
+  annotations?: InkStroke[]
+  totalBudget?: number                                 // 元；可选
+  coverImage?: string
+  archived: boolean
+  createdAt: number; updatedAt: number
+}
+
+export interface UIState {
+  activeTripId: string | null
+  activeDayIndex: number
+  viewMode: 'day' | 'all'                              // 聚焦当日 / 全览（D24）
+  layers: { food: boolean; hotel: boolean; sight: boolean }
+  drawer: 'itinerary' | 'expense' | null
+  mapKey: string | null                               // localStorage，不入代码库
+  isDemo: boolean                                      // 无 Key 降级标志 → 演示徽章
+  annotateMode: boolean
+}
+
+export type TimelineEntry =                            // 派生：时间轴渲染单元
+  | { kind: 'poi'; time: string; poiId: string; arrive: string; leave: string }
+  | { kind: 'move'; time: string; segmentId: string }
+  | { kind: 'stay'; label: string }                    // 夜间「宿 · XX」小卡
+  | { kind: 'divider'; label: string }                 // 跨城「翌日 · 赴丽江」分隔卡
+  | { kind: 'expense'; expenseId: string }</code></pre>
+</div>
+
+<h2 class="heading">6.4 状态管理（Pinia）</h2>
+<div class="doc-section">
+  <table class="table" data-caption="Store 划分">
+    <colgroup><col style="width:16%"><col style="width:44%"><col style="width:40%"></colgroup>
+    <thead><tr><th>Store</th><th>职责</th><th>持久化</th></tr></thead>
+    <tbody>
+      <tr><td>trip</td><td>trips[] 多攻略 CRUD、activeTripId、当前攻略全量数据、撤销栈（删除类）、归档/恢复、行迹聚合（已结束攻略统计与该城行迹小卷，纯派生 getter 不落盘）</td><td>localStorage `shicheng:trips`（每次 mutation 即时写入）</td></tr>
+      <tr><td>ui</td><td>视图模式/抽屉/图层/选中 POI/批注模式/Key（mapKey）/isDemo</td><td>mapKey 单独存 `shicheng:key`；其余会话级</td></tr>
+      <tr><td>weather</td><td>按城市缓存的 DailyWeather[]、诗句/建议映射、临近更新标志</td><td>内存 + `shicheng:weather:{city}`（24h TTL）</td></tr>
+      <tr><td>city</td><td>城市搜索、热门榜（按城市+类别缓存）、City 归一化</td><td>`shicheng:hot:{city}:{cat}`（单次拉取长期缓存）</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<h2 class="heading">6.5 地图三层与 Key 双轨</h2>
+<div class="doc-section">
+  <table class="table" data-caption="地图三层分工">
+    <colgroup><col style="width:14%"><col style="width:36%"><col style="width:50%"></colgroup>
+    <thead><tr><th>层</th><th>能力</th><th>接入方式</th></tr></thead>
+    <tbody>
+      <tr><td>视觉层</td><td>底图渲染、印章标记、墨线路线、信息窗、flyTo、聚合</td><td>JS API GL：运行时检测 Key → 动态加载 gljs?v=1.exp&amp;libraries=service,geometry → 套自定义水墨样式 → 加载失败走 SVG 降级</td></tr>
+      <tr><td>数据层</td><td>城市/地点搜索、路线规划（4 式）、逆地理</td><td>WebService <b>JSONP</b>（output=jsonp&amp;callback=cb，浏览器端免跨域）；段级/类别级缓存；199 检测弹引导</td></tr>
+      <tr><td>行动层</td><td>一键唤起导航</td><td>URI API：移动端 qqmap://（带起终点坐标）；Web 端 apis.map.qq.com/uri/v1/ 页面降级</td></tr>
+    </tbody>
+  </table>
+  <ul class="list">
+    <li><b>Key 双轨</b>（D11）：构建期——scripts/fetch-seed.mjs 用助手侧连接器配用户 Key 拉三城数据写入 src/seed（不进仓库的 Key：种子脚本从环境变量读 Key）；运行时——设置面板输入存 localStorage（`shicheng:key`），<b>Key 永不写入任何代码/文档</b>。</li>
+    <li><b>权限探测</b>：GL 加载即实测渲染能力；WebService 首调若返回 status:199 → KeyGuideModal 引导控制台补开，期间种子城市照常可用。</li>
+    <li><b>Key 安全</b>：因 Key 已在对话中明文出现过，上线前必须在控制台配置域名白名单（EdgeOne 域名）；个人 Key 搜索配额约 200 次/天、5 QPS。</li>
+    <li><b>Key 注入</b>（D80）：构建期 <code>VITE_TMAP_KEY</code>（.env，不入仓库）+ 运行时设置面板覆盖；<code>VITE_</code> 变量会进产物，故只算"不明文写进源码"，不算保密。</li>
+    <li><b>叠加层对齐</b>（D74）：SVG 叠加层用已做 cos 修正的线性投影，其 <code>spanX/spanY</code> 之比与 Web Mercator 同比例，因此把 bounds 四角交给 GL 即可对齐；zoom 反算 <code>z = log2(cssW·360/(256·spanLng))</code>，再用 <code>getBounds()</code> 实测补 1.5% 的瓦片吸附误差。GL 手势全关，视野单向由 bounds 驱动。</li>
+    <li><b>纸色实现</b>（D70）：<b>不写自定义 style</b>（腾讯 style 结构易写错且不报错，会让底图整层空白），改用 CSS 滤镜 + 纸色 <code>mix-blend-mode: color</code> 混合，保明度、可分辨路网；<code>baseMap.features</code> 去掉自带标注（D71）。</li>
+  </ul>
+</div>
+
+<h2 class="heading">6.6 时间推算与估算算法</h2>
+<div class="doc-section">
+  <h3 class="heading">时间推算（timeline.ts 纯函数）</h3>
+  <pre class="code" data-lang="typescript"><code>// 输入 DayPlan + segments + pois → 派生 TimelineEntry[]
+// 停留默认：sight 90 / food 60 / shop 60 / custom 30 / transport 20 / base 0（不占白天）
+function deriveDay(day, pois, segments): TimelineEntry[] {
+  let t = parse(day.departTime ?? '09:00')
+  const out: TimelineEntry[] = []
+  const stops = day.poiIds.filter(id =&gt; pois[id].role !== 'base')
+  for (const poiId of stops) {
+    const seg = segments.find(s =&gt; s.toPoiId === poiId &amp;&amp; day.segmentIds.includes(s.id))
+    if (seg) { t = addMin(t, seg.durationMin); out.push({ kind:'move', time:fmt(t), segmentId: seg.id }) }
+    const arrive = fmt(t)
+    const stay = pois[poiId].stayMinutes ?? DEFAULT_STAY[pois[poiId].category]
+    t = addMin(t, stay)
+    out.push({ kind:'poi', time:arrive, poiId, arrive, leave: fmt(t) })
+  }
+  if (day.basePoiId) out.push({ kind:'stay', label:`宿 · ${pois[day.basePoiId].name}` })
+  return out   // 跨城日由 Day 城市不同自动插 divider：「翌日 · 赴{city}」
+}</code></pre>
+  <h3 class="heading">无 Key 直线估算（estimate.ts）</h3>
+  <pre class="code" data-lang="typescript"><code>// 两点直线距离（GCJ-02 短距平面近似）× 经验速度 + 诚实「估」标记
+const SPEED = { walk: 4.5, bike: 12, taxi: 30 /*km/h，另加起步 5min*/ } // transit 不估，提示需 Key
+function estimate(from: LngLat, to: LngLat, mode: TransportMode) {
+  const d = haversineFlat(from, to)          // km
+  const durationMin = mode === 'taxi'
+    ? Math.ceil(d / SPEED.taxi * 60) + 5 : Math.ceil(d / SPEED[mode] * 60)
+  return { durationMin, distanceKm: round1(d), estimated: true }
+}</code></pre>
+  <p class="paragraph noindent">智能辅助阈值集中为常量表（4.7 表格的数值），便于调参与测试。</p>
+</div>
+
+<h2 class="heading">6.7 缓存与配额策略</h2>
+<div class="doc-section">
+  <ul class="list">
+    <li>热门榜：<b>每城市每类别只拉一次</b>，长期缓存（`shicheng:hot:{city}:{cat}`）——个人 Key 地点搜索配额（约 200 次/天）的最大保护。</li>
+    <li>搜索：300ms 防抖 + 会话内结果缓存（同关键词不重发）。</li>
+    <li>路线：段级缓存键 `from|to|mode`，改方式才重算；行程重排不重拉（两点不变）。</li>
+    <li>天气：24h TTL + 行前临近自动更新；Open-Meteo 请求 8s 超时降级。</li>
+    <li>配额耗尽表现：搜索返回空 + 提示「今日实时搜索额度已尽，可先浏览种子/已缓存数据」。</li>
+  </ul>
+</div>
+
+<h2 class="heading">6.8 坐标系纪律</h2>
+<div class="doc-section">
+  <ul class="list">
+    <li>全应用 POI/路线/地图交互统一 <b>GCJ-02</b>（腾讯系）。</li>
+    <li>Open-Meteo 查询用 <b>WGS-84</b>：按城市中心点换算（城市中心级别的偏移对预报无影响，代码处显式注释两坐标系来源，禁止逐 POI 混算）。</li>
+    <li>批注 InkStroke 存「落笔时视野中心 + 屏幕坐标→地理坐标」双记录，缩放平移后仍可还原。</li>
+  </ul>
+</div>
+
+<h2 class="heading">6.9 降级矩阵</h2>
+<div class="doc-section">
+  <table class="table" data-caption="全场景降级矩阵（任何情况不白屏）">
+    <colgroup><col style="width:22%"><col style="width:78%"></colgroup>
+    <thead><tr><th>场景</th><th>降级策略</th></tr></thead>
+    <tbody>
+      <tr><td>无 Key / GL 加载失败</td><td>SVG 自绘水墨底图（首页中国轮廓；编辑器城市抽象底图 + projection.ts 线性投影）+ 印章标记 + 种子数据 + 常驻「演示数据」徽章（D13）</td></tr>
+      <tr><td>WebService status:199</td><td>KeyGuideModal 引导补开权限；种子三城照常完整可用</td></tr>
+      <tr><td>搜索配额耗尽</td><td>提示 + 已缓存/种子数据可继续浏览编辑</td></tr>
+      <tr><td>路线规划失败</td><td>直线估算段（estimated:true + 「估」小字）+ 按方式样式画示意线</td></tr>
+      <tr><td>Open-Meteo 慢/失败</td><td>种子天气 + 「临近更新」标识；界面不阻塞</td></tr>
+      <tr><td>预报窗口外（&gt;16 天）</td><td>「临近出发自动更新」+ 当月气候参考文案，不硬造数据</td></tr>
+      <tr><td>Unsplash 外链失败</td><td>CSS 水墨渐变 + 类别图标占位</td></tr>
+      <tr><td>字体加载失败</td><td>serif fallback（Georgia/Songti/SimSun）+ swap</td></tr>
+      <tr><td>低端机动画卡顿</td><td>检测 deviceMemory/掉帧 → 关闭小车/小人动画，保留静态样式线 + 时长牌；标记聚类/按需渲染</td></tr>
+      <tr><td>localStorage 满</td><td>捕获 QuotaExceeded → 提示导出 JSON 清理旧攻略</td></tr>
+      <tr><td>完全离线</td><td>SW 应用壳缓存 + 种子数据 + 本地攻略照常编辑</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<h2 class="heading">6.10 PWA 与部署</h2>
+<div class="doc-section">
+  <ul class="list">
+    <li><b>PWA</b>：public/manifest.json（名称「拾程」、主题色 #F2ECE0、印章形图标 192/512）+ 手写 SW：预缓存应用壳（App JS/CSS/字体/index），运行时 stale-while-revalidate；数据全部 localStorage 天然离线。</li>
+    <li><b>部署：仅腾讯 EdgeOne Pages</b>（D51）——免费静态托管、国内边缘节点直连、Git 仓库推送自动部署或 CLI 上传 dist、默认域名免备案；自定义域名走国内加速才需 ICP。<a class="cite" href="#source-1">[1]</a><a class="cite" href="#source-3">[3]</a></li>
+    <li>弃选对比：GitHub Pages / Cloudflare / Vercel / Netlify 国内访问普遍困难<a class="cite" href="#source-2">[2]</a>；Gitee Pages 已下线<a class="cite" href="#source-2">[2]</a>；COS/OSS 需备案摩擦大。用户拍板「仅 EdgeOne」不做镜像。</li>
+    <li><b>构建</b>：vite base:'./'（同份 dist 任意子路径可跑）；字体自托管进 dist；构建产物校验后 CLI 上传；上线后在腾讯控制台为 Key 配域名白名单。</li>
+    <li><b>验收动作</b>：手机真机打开秒开（EdgeOne 国内边缘）、添加到主屏幕、离线打开应用壳。</li>
+  </ul>
+</div>
+
+<h2 class="heading">6.11 持久化与迁移</h2>
+<div class="doc-section">
+  <ul class="list">
+    <li>localStorage 键：`shicheng:trips`（全量攻略）、`shicheng:key`、`shicheng:hot:*`、`shicheng:weather:*`、`shicheng:settings`（主题等）。带版本号字段，schema 升级走轻量迁移函数。</li>
+    <li>备份/恢复（设置面板低调入口）：导出 JSON（全部攻略+设置，<b>不含 Key</b>）；导入校验 schema 版本与字段白名单，冲突按 id 覆盖并报告。</li>
+    <li>清空数据双确认（红色危险操作，需两次点击确认）。</li>
+  </ul>
+</div>
+<!-- ===== 七、种子数据与外部接口 ===== -->
+<h1 class="heading" id="sec-7">七、种子数据与外部接口</h1>
+
+<h2 class="heading">7.1 构建期种子拉取</h2>
+<div class="doc-section">
+  <ul class="list">
+    <li><b>通道</b>：scripts/fetch-seed.mjs 经助手侧腾讯地图连接器（配用户 Key，从环境变量读取，<b>不进仓库不进文档</b>）拉取真实数据。</li>
+    <li><b>城市</b>：大理 / 丽江 / 北京（覆盖「古城/雪山/都会」三种气质，含跨城示例大理→丽江）。</li>
+    <li><b>拉取内容</b>（写入 src/seed/*.ts，全部标注 source:'seed'）：
+      <ul class="list">
+        <li>POI 全量字段：坐标/评分/人均/营业时间/标签/简介/封面图（大理古城、洱海、崇圣寺三塔、喜洲、双廊、才村码头、丽江古城、玉龙雪山、束河、蓝月谷、白沙；北京：故宫、景山、什刹海、南锣鼓巷、天坛、颐和园、雍和宫等，每城约 20–30 个）。</li>
+        <li>代表交通段：几条真实路线（打车/步行/公交）供演示动画与实测时长。</li>
+        <li>天气序列：5 天示例预报（含诗句映射与穿衣建议成品）。</li>
+      </ul>
+    </li>
+    <li>种子是「兜底与演示」，不限制运行时任意城市（D03 红线）。</li>
+  </ul>
+</div>
+
+<h2 class="heading">7.2 运行时外部接口清单</h2>
+<div class="doc-section">
+  <table class="table" data-caption="外部接口与调用约定">
+    <colgroup><col style="width:26%"><col style="width:30%"><col style="width:44%"></colgroup>
+    <thead><tr><th>接口</th><th>端点（JSONP）</th><th>用途与约定</th></tr></thead>
+    <tbody>
+      <tr><td>地点搜索（城市）</td><td>ws.map.qq.com/place/v1/search</td><td>城市选择与下钻；boundary=region(city,2)；每城每类别一次缓存</td></tr>
+      <tr><td>地点搜索（建议）</td><td>ws.map.qq.com/place/v1/suggestion</td><td>编辑器搜索框；300ms 防抖</td></tr>
+      <tr><td>路线规划·驾车</td><td>ws.map.qq.com/direction/v1/driving</td><td>打车段：path/duration/费用估算因子</td></tr>
+      <tr><td>路线规划·步行/骑行</td><td>ws.map.qq.com/direction/v1/walking · ebiking</td><td>步行/骑行段：path/duration</td></tr>
+      <tr><td>路线规划·公交</td><td>ws.map.qq.com/direction/v1/transit</td><td>公交段：车次/换乘/票价（city 参数必传）</td></tr>
+      <tr><td>逆地理</td><td>apis.map.qq.com/ws/geocoder/v1</td><td>长按落点补地址（失败留空不阻塞）</td></tr>
+      <tr><td>天气</td><td>api.open-meteo.com/v1/forecast</td><td>daily=temp_max/min+weathercode；城市中心 WGS-84；8s 超时</td></tr>
+      <tr><td>URI 唤起</td><td>qqmap:// · apis.map.qq.com/uri/v1/</td><td>一键导航；移动端唤起 App、Web 降级页面</td></tr>
+    </tbody>
+  </table>
+  <aside class="callout" data-variant="warning">
+    <p><b>所有 WebService 调用统一 JSONP</b>（output=jsonp&amp;callback=cb、注意 URL 编码）绕浏览器跨域；接口参数/字段名以实测为准——本表为规格基线，开发首日先跑通探针脚本校准（含 status:199 语义确认）。</p>
+  </aside>
+</div>
+
+<!-- ===== 八、实施阶段 ===== -->
+<h1 class="heading" id="sec-8">八、实施阶段（Phase 0–11）</h1>
+<div class="doc-section">
+  <table class="table" data-caption="阶段计划与验收">
+    <colgroup><col style="width:12%"><col style="width:44%"><col style="width:44%"></colgroup>
+    <thead><tr><th>阶段</th><th>内容</th><th>产出 / 验收</th></tr></thead>
+    <tbody>
+      <tr><td>Phase 0</td><td>脚手架 + 设计系统：Vite+Vue3+TS+Tailwind v3 token；宣纸纹理/卷轴边框/印章/细双边线 CSS；字体自托管子集；印泥微渗动效基建</td><td>可运行空壳；design token 落 tailwind.config；印章/卡片/抽屉组件库静态可看</td></tr>
+      <tr><td>Phase 1</td><td>路由 + 首页：SVG 水墨中国图、攻略列表、新建攻略流（TripWizard 含闲章）、多攻略 TripStore + localStorage</td><td>建/删/进攻略闭环；无攻略空态；数据即时保存</td></tr>
+      <tr><td>Phase 2</td><td>城市下钻转场 + 热门榜标注 + 搜索/缓存/199 引导 + 无 Key SVG 降级（构建期拉种子）</td><td>搜任一城市下钻（有 Key 真实）；热门印章上地图；199 弹引导；无 Key 全程可用带演示徽章</td></tr>
+      <tr><td>Phase 3</td><td>收藏池 + 日程编排：加入/拖拽/移日/驻地锚点/聚焦当日与全览/删除撤销</td><td>编辑主流程可走通；POI 入日程自动连线；Day 切换地图联动</td></tr>
+      <tr><td>Phase 4</td><td>交通段系统 + 智能四件套 + 时间推算：方式弹层、小车/脚印动画、估算「估」、推荐/顺路/过载/欠载、时间串联</td><td>换方式即换样式线路+时长牌；推算时刻随编排实时重算；四件套触发正确</td></tr>
+      <tr><td>Phase 5</td><td>地点卡片 + 导航唤起 + 长按自定义落点 + 朱笔批注</td><td>信息聚合与一键导航闭环；未收录点可加可入日程；批注可画可撤销可持久</td></tr>
+      <tr><td>Phase 6</td><td>行程时间轴 + 天气（诗句/角牌/折线）+「今天」视图（锦囊/该出发了/盖章/雨备）+ 跨城分隔卡</td><td>时间轴完整含天气与宿卡；行中模拟日期可全流程演练</td></tr>
+      <tr><td>Phase 7</td><td>记账全功能：环形/柱状图、明细增删改、三个快捷入口、超支朱砂线</td><td>记账闭环 + 交通费联动预填</td></tr>
+      <tr><td>Phase 8</td><td>导出三件套（长卷/打印/JSON）+ 忆游回顾 + 归档 + 城市印记三态</td><td>长卷 PNG 可发朋友圈；打印版离线可读；回顾态数据聚合正确</td></tr>
+      <tr><td>Phase 9</td><td>响应式打磨：移动 bottom sheet/Tab、空态/加载、标记聚类、全程回放彩蛋、PWA manifest/SW、EdgeOne 部署、README、真机验收</td><td>验收标准（第九章）全项通过；手机真机秒开可安装</td></tr>
+      <tr><td>Phase 10</td><td>行迹：向导选址落库 cities[].province（D58）+ 首页「印记/行迹」双态开关（MapModeToggle）+ 行迹渲染（行印/卷内跨城淡墨虚线/年份胶囊）+ 该城行迹小卷（TrailCityModal）+ 统计行</td><td>结束并归档一卷后行迹图正确点亮；零盖章卷出虚边印；小卷直进忆游；统计行与数据一致（province 缺失不显示省数）</td></tr>
+      <tr><td>Phase 11</td><td>动效铺装：按 5.7 分场景清单逐视图补齐（晕/落/展/行），统一经 src/lib/motion.ts；prefers-reduced-motion 与低端机降级；动效并发与体积验收</td><td>清单逐条勾验通过；reduced-motion 全站可用；一屏非反馈动效并发≤2；低端机降级生效不掉帧</td></tr>
+      <tr><td>Phase 12</td><td>首页气韵（D63–D68）：ChinaInkMap 晕墨四档 + 毛笔边线 filter + 山水笔意 path + 印记有机化（微旋/两档/落印 stagger/hover）+ 画眼（最近编辑呼吸圈 + 题签挂线）+ 入场序列两动克制 + 竖排压边题签与题跋式统计行 + 空态未钤之印；零新依赖（SVG/CSS/anime.js）</td><td>首页静态观感「宣纸画而非剪影」（四档墨阶可见）；印记有微旋与大小节奏、入场落印成组；画眼呼吸为唯一常驻动效；reduced-motion 下全静态；空态点印可开新建向导</td></tr>
+    </tbody>
+  </table>
+  <p class="paragraph noindent"><b>里程碑纪律</b>：每阶段结束做浏览器级冒烟（Playwright Chromium 真机验证——用户环境无 Chrome 的既定流程）；阶段可并行处仅限前端组件（Phase 7 与 8 可交换顺序）；全程回放时间不足可砍（彩蛋已声明）；Phase 11 动效清单中装饰类条目（列表进场/空态墨迹等）时间不足可砍，反馈类不可砍（D59 纪律①）。</p>
+</div>
+
+<!-- ===== 九、验收标准 ===== -->
+<h1 class="heading" id="sec-9">九、验收标准（终验清单）</h1>
+<div class="doc-section">
+  <ol class="list">
+    <li>桌面与手机浏览器均可打开，响应式布局正确（bottom sheet 三档、底部 Tab 只切抽屉、地图恒为背景）。</li>
+    <li>首页为「一图一轴」布局（D60/D61）：地图满幅无控件遮挡；右缘挂轴收展正常（点轴头展、点外/Esc 收），搜索在卷首，列表/归档/设置入卷；城市印记齐全；有 Key 下钻后自动标注热门景区。</li>
+    <li>新建攻略 → 收藏池分日 → 拖拽排序 → 相邻自动连线 → 逐段换交通方式：地图出现对应小车/脚印/站点/单车样式线路 + 时长牌，无 Key 时为估算线且标「估」。</li>
+    <li>点任一 POI 出宣纸地点卡片；「导航」能出路线并唤起腾讯地图（移动端）/ Web 降级；长按可落自定义点；朱笔批注可画可存。</li>
+    <li>日程时间自动推算且随编辑实时重算；智能四件套（推荐/顺路/过载/欠载）触发正确；驻地锚点不污染时间轴、夜间出「宿」卡。</li>
+    <li>天气在时间轴可见（诗句+穿衣建议+折线+地图角牌）；「今天」视图三态正确；锦囊、「该出发了」、盖章、雨备全流程可演练。</li>
+    <li>记账增删改完整、图表正确、超支转朱砂「已逾制」；交通段预填联动。</li>
+    <li>导出：长卷 PNG 版式完整（题跋+闲章落款、不含记账明细）；打印自用版 HTML 离线可打印；JSON 备份恢复成功。</li>
+    <li>无 Key 时不白屏：SVG 水墨底图 + 印章标记 + 种子数据完整走通编辑流 + 常驻演示徽章；填 Key 后切实时模式。</li>
+    <li>视觉符合宋韵雅致（宣纸/淡青淡赭/朱砂小印/留白）：无紫色与蓝紫渐变、无 emoji 图标、无禁用字体、非居中卡片堆叠模板感。</li>
+    <li>技术栈为 Vue 3（&lt;script setup&gt; + Pinia + hash 路由），非 React；零后端零数据库。</li>
+    <li>行迹态：已结束攻略的城市正确落「行」印（零盖章卷为淡墨虚边印），卷内跨城段淡墨虚线正确、卷间不连线；该城行迹小卷条目与数据一致、可直进忆游回顾；统计行「历N省M城·在路X日·盖章Y枚」与真实数据一致（province 缺失时不显示省数）。</li>
+    <li>动效：5.7 分场景清单逐条可验——反馈类动效无遗漏；一屏非反馈动效并发≤2；prefers-reduced-motion 下全站降级为简动；低端机按降级矩阵静态可用。</li>
+    <li>部署到 EdgeOne Pages：手机真机秒开、可添加到主屏幕（PWA）、离线可开应用壳。</li>
+  </ol>
+</div>
+
+<!-- ===== 十、风险与应对 ===== -->
+<h1 class="heading" id="sec-10">十、风险与应对</h1>
+<div class="doc-section">
+  <table class="table" data-caption="风险登记表">
+    <colgroup><col style="width:26%"><col style="width:44%"><col style="width:30%"></colgroup>
+    <thead><tr><th>风险</th><th>影响</th><th>应对</th></tr></thead>
+    <tbody>
+      <tr><td>WebService 权限实际未生效 / 199</td><td>全国搜索与路线拿不到真实数据</td><td>构建期先跑探针实测；199 引导弹层 + 种子兜底（D17）</td></tr>
+      <tr><td>个人 Key 搜索配额 200 次/天</td><td>重度使用当天实时搜索失效</td><td>城市+类别单次缓存、防抖、种子为主（6.7）</td></tr>
+      <tr><td>Key 在对话中明文暴露</td><td>配额被他人消耗</td><td>不上代码；上线即配域名白名单；必要时换新 Key</td></tr>
+      <tr><td>JSONP 跨域/字段差异</td><td>调用失败或解析错</td><td>统一封装 + 探针脚本首日校准；失败走估算降级</td></tr>
+      <tr><td>坐标系混用（GCJ-02/WGS-84）</td><td>POI 偏移、天气查错</td><td>城市中心查询 + 显式注释 + 类型注释（6.8）</td></tr>
+      <tr><td>转场/小车动画低端机卡顿</td><td>移动体验差</td><td>低端机降级静态线+时长牌；标记聚类/按需渲染</td></tr>
+      <tr><td>水墨风格损害地图可读性</td><td>找路困难</td><td>底图保留地名/道路骨架；「标准底图」切换开关</td></tr>
+      <tr><td>字体/图片外链失败</td><td>版式塌</td><td>字体构建期自托管；图片水墨渐变占位</td></tr>
+      <tr><td>Lottie 素材体积/授权</td><td>包体膨胀或版权风险</td><td>仅选免费授权素材；JSON 压缩按需加载；超阈值降级 CSS 动画（D54）</td></tr>
+      <tr><td>localStorage 容量/清缓存</td><td>攻略丢失</td><td>JSON 备份习惯 + Quota 捕获提示；无云为已确认边界</td></tr>
+      <tr><td>动效铺装量浩大拖期</td><td>Phase 11 膨胀、体验反而杂乱</td><td>清单制逐条勾验（5.7）；反馈类优先、装饰类可砍（D59 三纪律）；统一经 motion.ts 控总量</td></tr>
+      <tr><td>范围蔓延（再加功能）</td><td>原型烂尾</td><td>第十一章红线清单 + 「先改文档再改代码」纪律</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- ===== 十一、明确不做清单 ===== -->
+<h1 class="heading" id="sec-11">十一、明确不做清单（范围红线）</h1>
+<div class="doc-section">
+  <p class="paragraph noindent">以下为讨论中<b>明确评审后砍掉</b>或属明显超范围的能力。开发期间任何人（包括用户自己）想加，先回到本文档走变更记录，防止原型膨胀成全栈产品：</p>
+  <ul class="list">
+    <li><b>协作与社区类</b>：多人协作编辑、评论点赞、UGC 攻略社区、攻略商店。</li>
+    <li><b>交易类</b>：票务/酒店预订、机票火车票比价、广告。</li>
+    <li><b>数据类</b>：离线地图包下载、GPS 足迹墨线（已评审放弃）、AI 智能推荐（无后端无模型）；<b>行迹（4.17）不在禁区</b>——它是攻略数据聚合，非 GPS 轨迹。</li>
+    <li><b>工具类</b>：行李清单、AA 分摊、语音备忘、音效、扫码接力传攻略。</li>
+    <li><b>工程类</b>：账号体系、云同步、多端实时、i18n 多语言、暗色主题（宣纸呼吸仅微调色温）。</li>
+  </ul>
+</div>
+
+<!-- ===== 十二、附录 ===== -->
+<h1 class="heading" id="sec-12">十二、附录</h1>
+
+<h2 class="heading">12.1 Key 安全约定</h2>
+<div class="doc-section">
+  <ul class="list">
+    <li>用户已于 2026-11-17 提供腾讯位置服务 WebService Key（对话中掩码存档为 L6RBZ-…-GHFMQ）。<b>该 Key 不写入任何代码、文档、仓库、日志</b>；构建脚本从环境变量 TENCENT_MAP_KEY 读取。</li>
+    <li>运行时 Key 由用户在设置面板输入，存 localStorage `shicheng:key`。</li>
+    <li>因 Key 曾在对话明文出现：<b>上线 EdgeOne 前必须在控制台配置域名白名单</b>；怀疑被盗用时直接换新 Key（对应用无侵入）。</li>
+    <li>额度认知：AI 场景临时额度说明以控制台为准（搜索约 200 次/天、5 QPS 量级），有效期以控制台显示为准。</li>
+  </ul>
+</div>
+
+<h2 class="heading">12.2 术语表</h2>
+<div class="doc-section">
+  <table class="table" data-caption="术语表">
+    <colgroup><col style="width:20%"><col style="width:80%"></colgroup>
+    <thead><tr><th>术语</th><th>释义</th></tr></thead>
+    <tbody>
+      <tr><td>拾程</td><td>站名，谐音「时辰」；朱砂印文站标</td></tr>
+      <tr><td>驻地锚点</td><td>住宿类 POI 的角色（role=base），地图墨顶小印常驻、时间轴夜间宿卡</td></tr>
+      <tr><td>收藏池 / 心愿单</td><td>逛阶段暂存想去的 POI 的池子，分日后移出</td></tr>
+      <tr><td>交通段</td><td>日程相邻两点间的交通连接（打车/步行/公交/骑行），estimated=true 为估算</td></tr>
+      <tr><td>今天视图</td><td>行中模式：当日行程变导航串联清单（锦囊/该出发了/盖章/雨备）</td></tr>
+      <tr><td>已行卷</td><td>已归档攻略的折叠区；忆游回顾=结束攻略的回顾态</td></tr>
+      <tr><td>朱笔批注</td><td>地图上的朱砂手绘圈画层（AnnotateLayer），存 Trip.annotations</td></tr>
+      <tr><td>城市印记</td><td>首页中国地图上代表「做过该城攻略」的三态小印</td></tr>
+      <tr><td>行迹 / 旧游</td><td>首页行迹态：应用内已结束攻略的聚合历史视图（D55–D58）；旧游即本应用内已完成并归档的攻略，不做应用外补录</td></tr>
+      <tr><td>晕 / 落 / 展 / 行</td><td>动效四语法动词（D59/5.7）：晕染扩散、落印确认、卷轴展开、笔行过程</td></tr>
+      <tr><td>宣纸呼吸</td><td>昼夜/雨天宣纸色温微调（CSS 变量 --paper 调制）</td></tr>
+      <tr><td>估算段</td><td>无 Key 时直线距离×经验速度推算的线路，朱砂「估」标记</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<h2 class="heading">12.3 讨论沿革（五轮 → v4）</h2>
+<div class="doc-section">
+  <ol class="timeline">
+    <li><strong>v1（原始规划）</strong><p>固定「大理丽江五日」的行程浏览器：四大功能、抽屉结构、国风视觉、Key 双轨雏形。</p></li>
+    <li><strong>v2（第一轮 5 问）</strong><p>用户推翻固定城市：升级为「全国任意城市攻略编辑器」——城市搜索/下钻/热门标注、先入日程再连线、单车脚印交通可视化、双页面路由、TripStore 多攻略。</p></li>
+    <li><strong>v3（第二轮 10 问 + 细节 5 问 + 顺手定案）</strong><p>补齐编辑器血肉：收藏池、时间推算、智能三件套（后增欠载为四件套）、长按落点、跨城示意、聚焦当日、「今天」视图、导出、单机边界、站名「拾程」；驻地锚点、盖章、归档、天气角牌、打印自用版。</p></li>
+    <li><strong>v3.5（想象力轮）</strong><p>点睛包六项全收；大想法九选八（足迹墨线弃选，换来零定位权限）；忆游回顾改为印章分布版。</p></li>
+    <li><strong>v4（部署轮）</strong><p>查证 2026 静态托管现状（EdgeOne Pages 可用、Gitee Pages 已下线、海外托管国内难达）→ 拍板「仅 EdgeOne」；base './'、字体自托管、手写 PWA、Key 白名单四项工程微调。53 项决策收口，本文档定稿。</p></li>
+    <li><strong>v4.1（动效库轮）</strong><p>查证 2026 动效生态（anime.js v4 大升级、Lottie 素材生态成熟）→ 定全套组合（D54）：anime.js v4 + lottie-web + roughjs/rough-notation + vue-konva；GSAP 插件收费、three.js 过重、Rive 资产管线负担均弃选；同步更新 §5.7 实现载体映射、§6.1 技术栈、§6.2 文件结构与 §10 风险表。累计 54 项决策。</p></li>
+    <li><strong>v4.2（行迹与动效轮）</strong><p>用户提出「历史旅行大地图」→ 定行迹模块（D55–D58：旧游=应用内已完成攻略、印记/行迹双态、仅卷内连线、统计行与 cities[].province 落库）；随后指出全站动效不足 → 5.7 升级为动效体系（D59：晕/落/展/行四语法 + 令牌 + 38 条分场景清单 + 三纪律），新增 Phase 10（行迹）/Phase 11（动效铺装）。累计 59 项决策。</p></li>
+    <li><strong>v4.3（布局重构轮）</strong><p>用户指出首页控件遮挡地图、观感不佳 → 定「一图一轴」（D60–D62）：地图满幅为舞台、撤销顶部横幅、站标改左上题签、搜索框与列表/归档/设置全部收进右缘竖挂轴（收起 48px / 展开 340px 覆盖式），编辑器不动。累计 62 项决策。</p></li>
+    <li><strong>v4.4（首页气韵轮）</strong><p>用户评首页「太死板不灵动」→ 诊断五病根（单色剪影无墨韵 / 印记全网格零节奏 / 首页零动效 / 布局机械对齐 / 无画眼）→ 定 D63–D68：晕墨四档 + 毛笔边线、山水笔意（山脉笔触/江河留白）、印记全套有机化（微旋 ±4°/两档/落印 stagger）、画眼=最近编辑（呼吸圈+题签挂线）、两动克制（常驻仅画眼呼吸+云雾只过一遍）、构图破格（竖排压边题签/题跋式统计行/空态未钲印）。分工定案：本侧只维护设计文档，代码由用户在 Cursor 实施（shicheng-cursor 目录）。累计 68 项决策。</p></li>
+    <li><strong>v4.5（实现补遗轮）</strong><p>代码侧（shicheng-cursor）实施完成后反查文档：把超出文档的实现追认为 D69–D80，并新增 12.4 实现核查表记录文档已定而代码未达的 17 处。累计 80 项决策。</p></li>
+    <li><strong>v4.6（落地与体验轮）</strong><p>按 12.4 建议顺序把一图一轴、行迹、首页气韵、宣纸呼吸、图层篆印、长按落点、跨日拖拽、199 引导、动效底座一次性收口；新增表K（D81–D90）；12.4 改为历史快照，12.5 记录剩余缺口。累计 90 项决策。确立「文档与代码同轮更新」纪律（D90）。</p></li>
+  </ol>
+</div>
+
+<h2 class="heading">12.4 实现核查（v4.4 → 代码，历史快照）</h2>
+<div class="doc-section">
+  <p class="paragraph noindent">本节保留 v4.5 当时的缺口快照，便于回看「从哪里来」。当前状态以 <b>12.5</b> 为准。</p>
+  <aside class="callout" data-variant="tip"><p>原表J 17 处缺口中：行迹 / 一图一轴 / 气韵 / 宣纸呼吸 / 图层 / 长按 / 动效底座 / PWA 图标 已在 v4.6 收口；详见 12.5。</p></aside>
+</div>
+
+<h2 class="heading">12.5 剩余缺口（v4.6）</h2>
+<div class="doc-section">
+  <p class="paragraph noindent">诚实列出仍未达或可继续打磨的条目——不把「部分完成」说成「全部完成」。</p>
+  <div class="table-wrap">
+    <div class="table-caption">表L 仍可打磨</div>
+    <table class="table" data-caption="剩余缺口">
+      <colgroup><col style="width:18%"><col style="width:42%"><col style="width:40%"></colgroup>
+      <thead><tr><th>条目</th><th>现状</th><th>建议</th></tr></thead>
+      <tbody>
+        <tr><td>5.7 动效 38 条</td><td>底座已立（D81），关键转场/落印/晕染/圈选已通；清单中装饰类条目未逐条铺满</td><td>按反馈优先继续铺；时间不够可砍装饰类</td></tr>
+        <tr><td>D42 Cormorant</td><td>仍无自托管 woff2；数字回退 Georgia / 系统衬线</td><td>子集化自托管或正式改用系统衬线并改文档</td></tr>
+        <tr><td>4.2 缩放聚合</td><td>已按 D91 做网格墨点簇（首页）</td><td>编辑器城市图若 POI 过密可再套同一算法</td></tr>
+        <tr><td>vue-konva 批注栈</td><td>批注仍为 canvas + rough；vue-konva 已装未用</td><td>保持现状或卸载依赖；对象化撤销非刚需</td></tr>
+        <tr><td>public/lottie</td><td>无 JSON 素材；锦囊等仍用 CSS</td><td>有合适水墨 Lottie 再补，不硬凑</td></tr>
+        <tr><td>4.16 回放逐段生长</td><td>可逐日回放；未细化到逐段「行」语法</td><td>彩蛋，最后打磨</td></tr>
+        <tr><td>7.1 fetch-seed</td><td>静态种子够用</td><td>优化项</td></tr>
+        <tr><td>D64 兴安岭</td><td>因纵向梯子观感缺席</td><td>若要补，改用短弧段而非长纵线</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p class="paragraph"><b>结论（v4.6）</b>：产品主表面（首页一图一轴 + 行迹 + 气韵 + 编辑器主链路）已与设计文档对齐；剩余多为字体、装饰动效与彩蛋级打磨。下一轮优先：Cormorant 或改文档、印记聚合、动效清单反馈类条目。</p>
+</div>
+
+<h1 class="heading">主要数据来源</h1>
+<div class="source-list">
+  <ol class="list">
+    <li id="source-1"><span class="src-id">[1]</span> <a class="source-link" href="https://cloud.tencent.com/developer/article/2565878" target="_blank">腾讯云开发者社区</a>，《腾讯云 EdgeOne Pages，这不就是国内版 Vercel 吗?!》（2025-09-08）——EdgeOne Pages 免费静态托管、Git 集成自动部署</li>
+    <li id="source-2"><span class="src-id">[2]</span> <a class="source-link" href="https://cloud.tencent.com/developer/article/2560845" target="_blank">腾讯云开发者社区</a>，《EdgeOne 免费用？我的文档网站从爬行到飞行》（2025-08-28）——Gitee Pages 已下线；GitHub Pages/Cloudflare/Vercel/Netlify 国内访问困难</li>
+    <li id="source-3"><span class="src-id">[3]</span> <a class="source-link" href="https://cloud.tencent.com/developer/article/2466490" target="_blank">腾讯云开发者社区</a>，《EdgeOne Pages 入门实践——低成本网站托管新方案》（2024-11-19）——Vue/React SPA 托管适用性、部署流程</li>
+  </ol>
+</div>
+
+<div class="divider"><span class="line"></span><span class="diamond"></span><span class="line"></span></div>
+
+<section class="title end_page">
+  <h1>拾程 · 设计定稿</h1>
+  <p>91 项决策 · 17 个功能模块 · 13 个实施阶段 · 一张宣纸上的天下<br>
+  开发以本文档为唯一基准；变更先改文档，再改代码（D90）。<br>
+  v4.6 · 2026-11-17</p>
+</section>
+
+</body>
+</html>
