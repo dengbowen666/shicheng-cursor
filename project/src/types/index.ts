@@ -30,6 +30,23 @@ export interface POI {
 
 export type TransportMode = 'walk' | 'taxi' | 'transit' | 'bike'
 
+// L01：城际交通方式——与市内 TransportMode 语义分开（高铁/飞机是市内段无法表达的）
+export type LegMode = 'highspeed' | 'train' | 'flight' | 'car' | 'coach' | 'walk'
+
+/** L01：城际行程段（Leg）——从一座城到另一座城的一次移动，一等公民 */
+export interface Leg {
+  id: string
+  fromCity: string
+  toCity: string
+  mode: LegMode
+  departTime?: string          // 发车/起飞时刻 HH:mm
+  arriveTime?: string          // 到达时刻 HH:mm
+  durationMin?: number         // 时长（分）
+  cost?: number                // 花费（分）
+  note?: string                // 车次 / 航班号
+  estimated: boolean           // true=按经验估算，界面标「估」
+}
+
 export interface TransportSegment {
   id: string
   fromPoiId: string
@@ -42,6 +59,7 @@ export interface TransportSegment {
   transferCount?: number
   path?: LngLat[]
   estimated: boolean // true=直线×经验速度估算，界面标朱砂「估」
+  pinned?: boolean // O05：固定走法，重建交通段时豁免删除与覆盖
 }
 
 export interface DailyWeather {
@@ -63,6 +81,7 @@ export interface DayPlan {
   poiIds: string[]
   basePoiId?: string
   segmentIds: string[]
+  legIds: string[]             // L01：本日出发的城际段（可多条→同日跨城）
   weather?: DailyWeather
 }
 
@@ -108,6 +127,7 @@ export interface Trip {
   pois: Record<string, POI>
   wishlist: string[]
   segments: Record<string, TransportSegment>
+  legs: Record<string, Leg>    // L01：城际段字典，按 day.legIds 引用
   expenses: Expense[]
   annotations: InkStroke[]
   totalBudget?: number
@@ -122,6 +142,7 @@ export interface Trip {
 export type TimelineEntry =
   | { kind: 'poi'; time: string; poiId: string; arrive: string; leave: string }
   | { kind: 'move'; time: string; segmentId: string }
+  | { kind: 'leg'; time: string; legId: string; arrive: string }  // L03：城际段条目
   | { kind: 'stay'; label: string }
   | { kind: 'divider'; label: string }
   | { kind: 'expense'; expenseId: string }
@@ -141,4 +162,14 @@ export const MODE_COLOR: Record<TransportMode, string> = {
   walk: '#8FA9A6',
   transit: '#B9C6C4',
   bike: '#6E8B88',
+}
+
+// L01：城际方式标签与配色——统一用朱砂系长虚线，区别于市内 POI 连线
+export const LEG_MODE_LABEL: Record<LegMode, string> = {
+  highspeed: '高铁', train: '火车', flight: '飞机', car: '自驾', coach: '大巴', walk: '徒步',
+}
+
+export const LEG_MODE_COLOR: Record<LegMode, string> = {
+  highspeed: '#A64834', train: '#8C3A28', flight: '#B0513A',
+  car: '#B08D70', coach: '#9A7557', walk: '#6E8B88',
 }

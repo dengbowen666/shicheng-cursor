@@ -1,9 +1,10 @@
 import { computed, ref, watch } from 'vue'
 import { defineStore } from 'pinia'
-import type { City, DayPlan, Expense, InkStroke, POI, TransportMode, Trip } from '../types'
+import type { City, DayPlan, Expense, InkStroke, Leg, POI, TransportMode, Trip } from '../types'
 import { estimate } from '../lib/estimate'
 import { fetchRoute } from '../lib/routeApi'
 import { useUiStore } from './ui'
+import { useCityStore } from './city'
 import { makeDemoTrip } from '../seed'
 
 const STORAGE = 'shicheng:trips'
@@ -15,6 +16,10 @@ export interface UndoEntry {
   tripId: string
   at: number
 }
+
+/** O09：导入策略——同 ID 冲突时覆盖 / 跳过 / 另存为副本 */
+export type ImportPolicy = 'overwrite' | 'skip' | 'clone'
+export interface ImportResult { ok: boolean; message: string; conflicts: string[]; added: number; skipped: number }
 
 function uid(prefix: string) {
   return `${prefix}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`
@@ -50,11 +55,13 @@ function normalizeTrip(t: any): Trip {
       poiIds: d.poiIds || [],
       basePoiId: d.basePoiId,
       segmentIds: d.segmentIds || [],
+      legIds: (d.legIds || []).filter((id: string) => !!(t.legs || {})[id]), // L01：丢弃指向不存在段的悬空引用
       weather: d.weather,
     })),
     pois: t.pois || {},
     wishlist: t.wishlist || [],
     segments: t.segments || {},
+    legs: t.legs || {}, // L01：旧数据平滑补空
     expenses: (t.expenses || []).map((e: any) => ({ amount: Number(e.amount) || 0, createdAt: e.createdAt || now, ...e })),
     annotations: t.annotations || [],
     totalBudget: t.totalBudget,
@@ -139,11 +146,29 @@ export const useTripStore = defineStore('trip', () => {
     if (!t || !ui.mapKey) return
     for (const d of [...t.days]) await refineDay(d.dayIndex)
   }
-  function snapshot(tripId: string, label: string) {
+  // O03：一次用户动作可能触发多次底层 mutation，用 depth 合并成一条快照
+  let batchDepth = 0
+  let batchTripId: string | null = null
+  let batchLabel = ''
+  function beginBatch(tripId: string, label: string) {
+    if (batchDepth++ === 0) { batchTripId = tripId; batchLabel = label }
+  }
+  function endBatch() {
+    if (--batchDepth === 0 && batchTripId) {
+      pushSnapshot(batchTripId, batchLabel)
+      batchTripId = null
+      batchLabel = ''
+    }
+  }
+  function pushSnapshot(tripId: string, label: string) {
     const trip = trips.value.find(t => t.id === tripId)
     if (!trip) return
     undoStack.value.push({ label, snapshot: JSON.stringify(trip), tripId, at: Date.now() })
     if (undoStack.value.length > 12) undoStack.value.shift()
+  }
+  function snapshot(tripId: string, label: string) {
+    if (batchDepth > 0) return
+    pushSnapshot(tripId, label)
   }
   function undo(): string | null {
     const entry = undoStack.value.pop()
@@ -151,7 +176,103 @@ export const useTripStore = defineStore('trip', () => {
     const idx = trips.value.findIndex(t => t.id === entry.tripId)
     if (idx < 0) return null
     trips.value[idx] = normalizeTrip(JSON.parse(entry.snapshot))
+    // 撤销对象不是当前攻略时切过去，否则用户看不到任何变化
+    if (activeTripId.value !== entry.tripId) activeTripId.value = entry.tripId
     return `已撤销：${entry.label}`
+  }
+
+  /** 从各天的 city 反推 trip.cities：去重、按首次出现顺序；extra 用于刚选入的新城。
+   *  L02：城际段两端城市也要保住（否则仅作端点的城市会从 cities 消失，地图连线取不到中心）。 */
+  function syncCities(trip: Trip, extra?: City) {
+    const known = new Map<string, City>()
+    for (const c of trip.cities) known.set(c.name, c)
+    if (extra) known.set(extra.name, extra)
+    const seen = new Set<string>()
+    const next: City[] = []
+    const add = (name?: string) => {
+      const c = name ? known.get(name) : undefined
+      if (c && !seen.has(c.name)) { seen.add(c.name); next.push(c) }
+    }
+    for (const d of trip.days) add(d.city)
+    for (const leg of Object.values(trip.legs || {})) { add(leg.fromCity); add(leg.toCity) }
+    trip.cities = next
+  }
+
+  /** L02：确保城市在 trip.cities 中（带 center），供城际连线/统计使用；返回该城 */
+  function ensureCity(t: Trip, name: string): City | undefined {
+    const hit = t.cities.find(c => c.name === name)
+    if (hit) return hit
+    const found = useCityStore().findCity(name)
+    if (found) t.cities.push({ ...found })
+    return found
+  }
+
+  /** L02：添加城际段——并入两端城市、挂到到达日并把当日主城切到到达城，合成一条快照 */
+  function addLeg(input: Omit<Leg, 'id'>, dayIndex: number): Leg | null {
+    const t = activeTrip.value
+    const day = t?.days.find(d => d.dayIndex === dayIndex)
+    if (!t || !day || !input.fromCity || !input.toCity || input.fromCity === input.toCity) return null
+    beginBatch(t.id, '添加城际段')
+    try {
+      ensureCity(t, input.fromCity)
+      ensureCity(t, input.toCity)
+      const leg: Leg = { ...input, id: uid('leg') }
+      t.legs[leg.id] = leg
+      day.legIds.push(leg.id)
+      day.city = input.toCity // 段挂在到达日：当日主城即到达城
+      syncCities(t)
+      touch(t)
+      return leg
+    } finally { endBatch() }
+  }
+
+  /** L02：改城际段；端点/到达城变化时同步当日主城与 cities，合成一条快照 */
+  function updateLeg(id: string, patch: Partial<Leg>) {
+    const t = activeTrip.value
+    const leg = t?.legs[id]
+    if (!t || !leg) return
+    beginBatch(t.id, '改城际段')
+    try {
+      Object.assign(leg, patch)
+      if (patch.fromCity) ensureCity(t, patch.fromCity)
+      if (patch.toCity) {
+        ensureCity(t, patch.toCity)
+        for (const d of t.days) if (d.legIds.includes(id)) d.city = patch.toCity
+      }
+      syncCities(t)
+      touch(t)
+    } finally { endBatch() }
+  }
+
+  /** L02：删除城际段，并从所有日的 legIds 中摘除 */
+  function removeLeg(id: string) {
+    const t = activeTrip.value
+    if (!t?.legs[id]) return
+    snapshot(t.id, '删除城际段')
+    delete t.legs[id]
+    for (const d of t.days) d.legIds = d.legIds.filter(x => x !== id)
+    touch(t)
+  }
+
+  /** L02：某日出发的城际段（按 legIds 顺序） */
+  function legsOfDay(dayIndex: number): Leg[] {
+    const t = activeTrip.value
+    const day = t?.days.find(d => d.dayIndex === dayIndex)
+    if (!t || !day) return []
+    return day.legIds.map(id => t.legs[id]).filter((l): l is Leg => !!l)
+  }
+
+  /** O01：改某天所在城市，同步 cities 并重取该日路线 */
+  function setDayCity(dayIndex: number, city: City) {
+    const t = activeTrip.value
+    if (!t) return
+    const day = t.days.find(d => d.dayIndex === dayIndex)
+    if (!day || day.city === city.name) return
+    snapshot(t.id, '改城市')
+    day.city = city.name
+    syncCities(t, city)
+    touch(t)
+    void refineDay(dayIndex)
   }
 
   function findTrip(id: string) { return trips.value.find(t => t.id === id) || null }
@@ -177,10 +298,12 @@ export const useTripStore = defineStore('trip', () => {
         departTime: '09:00',
         poiIds: [],
         segmentIds: [],
+        legIds: [],
       })),
       pois: {},
       wishlist: [],
       segments: {},
+      legs: {},
       expenses: [],
       annotations: [],
       totalBudget: input.budget || undefined,
@@ -205,13 +328,16 @@ export const useTripStore = defineStore('trip', () => {
     if (!t) return
     snapshot(id, archived ? '归档攻略' : '恢复攻略')
     t.archived = archived
+    // 归档/恢复必须同步维护 completedAt，否则恢复后仍被判为「已行」，回不到印记态
     if (archived) t.completedAt = Date.now()
+    else delete t.completedAt
     touch(t)
   }
 
   function updateTrip(id: string, patch: Partial<Trip>) {
     const t = findTrip(id)
     if (!t) return
+    snapshot(id, '改题名/设置')
     Object.assign(t, patch)
     touch(t)
   }
@@ -235,6 +361,7 @@ export const useTripStore = defineStore('trip', () => {
   function removeFromWishlist(poiId: string) {
     const t = activeTrip.value
     if (!t) return
+    snapshot(t.id, '移出心愿池')
     t.wishlist = t.wishlist.filter(id => id !== poiId)
     touch(t)
   }
@@ -243,33 +370,72 @@ export const useTripStore = defineStore('trip', () => {
     return activeTrip.value?.days.filter(d => d.poiIds.includes(poiId)).map(d => d.dayIndex) || []
   }
 
+  /**
+   * O04：增量重建。按相邻 stop 对生成段；未变化的段原样复用（含真实 path/cost/estimated=false），
+   * 只删除失效段、新建新增段，仅当有新段时才补取真实路线。
+   */
   function rebuildSegments(dayIndex: number) {
     const t = activeTrip.value
     if (!t) return
     const day = t.days.find(d => d.dayIndex === dayIndex)
     if (!day) return
-    const oldModes = new Map<string, TransportMode>()
+
+    const stops = day.poiIds.filter(id => t.pois[id] && t.pois[id].role !== 'base')
+    const desired = new Map<string, { from: string; to: string }>()
+    const order: string[] = []
+    for (let i = 0; i < stops.length - 1; i++) {
+      const key = `${stops[i]}|${stops[i + 1]}`
+      if (!desired.has(key)) { desired.set(key, { from: stops[i], to: stops[i + 1] }); order.push(key) }
+    }
+
+    // ① 失效段：端点对已不在 desired，或引用了不存在的 POI
+    //    O05：pinned 段只在字典里保留（保住真实路线/走法），从当天段列表暂时摘掉，
+    //    待端点对恢复时原样复活；非 pinned 段直接删除。
+    const kept: string[] = []
     for (const sid of day.segmentIds) {
       const s = t.segments[sid]
-      if (s) oldModes.set(`${s.fromPoiId}|${s.toPoiId}`, s.mode)
+      const key = s ? `${s.fromPoiId}|${s.toPoiId}` : ''
+      if (s && desired.has(key) && t.pois[s.fromPoiId] && t.pois[s.toPoiId]) kept.push(sid)
+      else if (s?.pinned) { /* 保留字典条目，不进 kept */ }
+      else delete t.segments[sid]
     }
-    for (const sid of day.segmentIds) delete t.segments[sid]
-    day.segmentIds = []
-    const stops = day.poiIds.filter(id => t.pois[id] && t.pois[id].role !== 'base')
-    for (let i = 0; i < stops.length - 1; i++) {
-      const from = t.pois[stops[i]], to = t.pois[stops[i + 1]]
-      const key = `${from.id}|${to.id}`
-      const mode = oldModes.get(key) || 'walk'
-      const e = estimate(from.location, to.location, mode)
+    day.segmentIds = kept
+
+    // ② 复用已有段；缺失的段才新建。pinned 的历史段按端点对优先复活。
+    const existing = new Map<string, string>()
+    for (const sid of day.segmentIds) {
+      const s = t.segments[sid]
+      if (s) existing.set(`${s.fromPoiId}|${s.toPoiId}`, sid)
+    }
+    const pinnedByKey = new Map<string, string>()
+    for (const [sid, s] of Object.entries(t.segments)) {
+      if (s.pinned && t.pois[s.fromPoiId] && t.pois[s.toPoiId]) pinnedByKey.set(`${s.fromPoiId}|${s.toPoiId}`, sid)
+    }
+    let hasNew = false
+    for (const key of order) {
+      if (existing.has(key)) continue
+      const revived = pinnedByKey.get(key)
+      if (revived) { day.segmentIds.push(revived); continue }
+      const { from, to } = desired.get(key)!
+      const a = t.pois[from], b = t.pois[to]
+      const e = estimate(a.location, b.location, 'walk')
       const id = uid('seg')
       t.segments[id] = {
-        id, fromPoiId: from.id, toPoiId: to.id, mode,
+        id, fromPoiId: from, toPoiId: to, mode: 'walk',
         durationMin: e.durationMin, distanceKm: e.distanceKm, cost: e.cost, estimated: true,
       }
       day.segmentIds.push(id)
+      hasNew = true
     }
+
+    // 保持段顺序与 stops 顺序一致
+    day.segmentIds = order.map(k => existing.get(k) || day.segmentIds.find(sid => {
+      const s = t.segments[sid]
+      return s && `${s.fromPoiId}|${s.toPoiId}` === k
+    })!).filter((sid): sid is string => !!sid)
+
     touch(t)
-    void refineDay(dayIndex)
+    if (hasNew) void refineDay(dayIndex)
   }
 
   function addToDay(poi: POI, dayIndex: number, atIndex?: number): { ok: boolean; existedIn?: number[] } {
@@ -350,6 +516,57 @@ export const useTripStore = defineStore('trip', () => {
     touch(t)
   }
 
+  /** O05：固定/取消固定某段走法（固定后重建不再覆盖其方式与真实路线） */
+  function setSegmentPinned(segmentId: string, pinned: boolean) {
+    const t = activeTrip.value
+    const seg = t?.segments[segmentId]
+    if (!t || !seg) return
+    snapshot(t.id, pinned ? '固定走法' : '取消固定')
+    seg.pinned = pinned
+    touch(t)
+  }
+
+  /** O05：在某交通段的两点之间插入一处经停，原段自动拆成两段 */
+  function insertStopAfter(segmentId: string, poi: POI): boolean {
+    const t = activeTrip.value
+    const seg = t?.segments[segmentId]
+    if (!t || !seg) return false
+    const day = t.days.find(d => d.segmentIds.includes(segmentId))
+    if (!day) return false
+    const at = day.poiIds.indexOf(seg.toPoiId)
+    if (at < 0) return false
+    snapshot(t.id, '插入经停')
+    addPoi(poi, t.id)
+    day.poiIds.splice(at, 0, poi.id)
+    t.wishlist = t.wishlist.filter(id => id !== poi.id)
+    rebuildSegments(day.dayIndex)
+    touch(t)
+    return true
+  }
+
+  /** O03：设/取消驻地是一次动作，内部多次 mutation 合并为一条快照 */
+  function toggleBasePoi(dayIndex: number, poiId: string) {
+    const t = activeTrip.value
+    const day = t?.days.find(d => d.dayIndex === dayIndex)
+    if (!t || !day || !t.pois[poiId]) return
+    beginBatch(t.id, day.basePoiId === poiId ? '取消驻地' : '设驻地')
+    try {
+      if (day.basePoiId === poiId) {
+        day.basePoiId = undefined
+        t.pois[poiId].role = 'stop'
+      } else {
+        const oldBase = day.basePoiId
+        if (oldBase && t.pois[oldBase]) t.pois[oldBase].role = 'stop'
+        day.basePoiId = poiId
+        t.pois[poiId].role = 'base'
+      }
+      rebuildSegments(dayIndex)
+      touch(t)
+    } finally {
+      endBatch()
+    }
+  }
+
   function setSegmentMode(dayIndex: number, segmentId: string, mode: TransportMode) {
     const t = activeTrip.value
     if (!t) return
@@ -358,6 +575,7 @@ export const useTripStore = defineStore('trip', () => {
     if (!day || !seg) return
     const from = t.pois[seg.fromPoiId], to = t.pois[seg.toPoiId]
     const e = estimate(from.location, to.location, mode)
+    snapshot(t.id, '改交通方式')
     seg.mode = mode
     seg.durationMin = e.durationMin
     seg.distanceKm = e.distanceKm
@@ -370,6 +588,7 @@ export const useTripStore = defineStore('trip', () => {
   function updatePoi(poiId: string, patch: Partial<POI>) {
     const t = activeTrip.value
     if (!t?.pois[poiId]) return
+    snapshot(t.id, '改地点')
     Object.assign(t.pois[poiId], patch)
     touch(t)
   }
@@ -381,6 +600,7 @@ export const useTripStore = defineStore('trip', () => {
       location: input.location, address: input.address || '', city: input.city, tags: [], source: 'custom',
       intro: input.note, note: input.note, stayMinutes: input.category === 'hotel' ? 0 : 60,
     }
+    snapshot(t.id, '落自定义点')
     addPoi(poi, t.id)
     t.wishlist.push(poi.id)
     touch(t)
@@ -391,15 +611,17 @@ export const useTripStore = defineStore('trip', () => {
     const t = activeTrip.value
     const day = t?.days.find(d => d.dayIndex === dayIndex)
     if (!t || !day) return
+    snapshot(t.id, '改日程')
     Object.assign(day, patch)
     touch(t)
   }
   function addDay() {
     const t = activeTrip.value
     if (!t || t.days.length >= 15) return
+    snapshot(t.id, '加一天')
     const n = t.days.length + 1
     const city = t.cities[t.cities.length - 1]?.name || ''
-    t.days.push({ dayIndex: n, city, title: `Day ${n} · ${city}`, departTime: '09:00', poiIds: [], segmentIds: [] })
+    t.days.push({ dayIndex: n, city, title: `Day ${n} · ${city}`, departTime: '09:00', poiIds: [], segmentIds: [], legIds: [] })
     touch(t)
   }
   function removeDay(dayIndex: number) {
@@ -418,6 +640,7 @@ export const useTripStore = defineStore('trip', () => {
       if (e.dayIndex === dayIndex) e.dayIndex = Math.min(dayIndex, t.days.length)
       else if (e.dayIndex > dayIndex) e.dayIndex -= 1
     }
+    syncCities(t)
     touch(t)
   }
 
@@ -433,6 +656,7 @@ export const useTripStore = defineStore('trip', () => {
     if (!t) return
     const e = t.expenses.find(x => x.id === id)
     if (!e) return
+    snapshot(t.id, '改账目')
     Object.assign(e, patch)
     touch(t)
   }
@@ -467,22 +691,50 @@ export const useTripStore = defineStore('trip', () => {
   function exportData() {
     return JSON.stringify({ schema: SCHEMA, exportedAt: new Date().toISOString(), trips: trips.value }, null, 2)
   }
-  function importData(json: string): { ok: boolean; message: string } {
+  /** O09：预检——只解析并列出同 ID 冲突，不改任何数据 */
+  function inspectImport(json: string): ImportResult {
     try {
       const parsed = JSON.parse(json)
       const incoming: Trip[] = Array.isArray(parsed?.trips) ? parsed.trips : Array.isArray(parsed) ? parsed : []
-      if (!incoming.length) return { ok: false, message: '文件中没有攻略数据' }
-      let added = 0
-      for (const item of incoming) {
-        const trip = normalizeTrip(item)
-        const idx = trips.value.findIndex(t => t.id === trip.id)
-        if (idx >= 0) trips.value[idx] = trip
-        else trips.value.push(trip)
-        added++
-      }
-      return { ok: true, message: `已导入 ${added} 份攻略` }
+      if (!incoming.length) return { ok: false, message: '文件中没有攻略数据', conflicts: [], added: 0, skipped: 0 }
+      const known = new Set(trips.value.map(t => t.id))
+      const conflicts = incoming.filter(t => t && known.has(t.id)).map(t => t.title || '未命名旅程')
+      return { ok: true, message: `可读入 ${incoming.length} 份攻略`, conflicts, added: 0, skipped: 0 }
     } catch {
-      return { ok: false, message: 'JSON 格式不正确' }
+      return { ok: false, message: 'JSON 格式不正确', conflicts: [], added: 0, skipped: 0 }
+    }
+  }
+
+  function importData(json: string, policy: ImportPolicy = 'overwrite'): ImportResult {
+    try {
+      const parsed = JSON.parse(json)
+      const incoming: Trip[] = Array.isArray(parsed?.trips) ? parsed.trips : Array.isArray(parsed) ? parsed : []
+      if (!incoming.length) return { ok: false, message: '文件中没有攻略数据', conflicts: [], added: 0, skipped: 0 }
+      snapshot(activeTripId.value || incoming[0]?.id || '', '导入前状态')
+      let added = 0, skipped = 0
+      for (const item of incoming) {
+        const incomingTrip = normalizeTrip(item)
+        const idx = trips.value.findIndex(t => t.id === incomingTrip.id)
+        if (idx >= 0) {
+          if (policy === 'skip') { skipped++; continue }
+          if (policy === 'clone') {
+            incomingTrip.id = uid('trip')
+            incomingTrip.title = `${incomingTrip.title} · 副本`
+            trips.value.push(incomingTrip)
+            added++
+            continue
+          }
+          trips.value[idx] = incomingTrip
+        } else {
+          trips.value.push(incomingTrip)
+          added++
+        }
+      }
+      if (!activeTripId.value || !findTrip(activeTripId.value)) activeTripId.value = trips.value[0]?.id || null
+      const tail = skipped ? `，跳过 ${skipped} 份` : ''
+      return { ok: true, message: `已导入 ${added} 份攻略${tail}`, conflicts: [], added, skipped }
+    } catch {
+      return { ok: false, message: 'JSON 格式不正确', conflicts: [], added: 0, skipped: 0 }
     }
   }
   function clearAll() {
@@ -493,12 +745,13 @@ export const useTripStore = defineStore('trip', () => {
 
   return {
     trips, activeTripId, activeTrip, sortedTrips, activeTrips, archivedTrips, undoStack,
-    findTrip, openTrip, createTrip, deleteTrip, archiveTrip, updateTrip, undo,
+    findTrip, openTrip, createTrip, deleteTrip, archiveTrip, updateTrip, setDayCity, syncCities, undo,
+    addLeg, updateLeg, removeLeg, legsOfDay,
     addPoi, addToWishlist, removeFromWishlist, isWishlisted, inDays,
-    addToDay, removeFromDay, movePoi, reorderPoi, reorderByOrder, rebuildSegments, setSegmentMode, refineDay, refineTrip,
+    addToDay, removeFromDay, movePoi, reorderPoi, reorderByOrder, rebuildSegments, setSegmentMode, setSegmentPinned, insertStopAfter, toggleBasePoi, refineDay, refineTrip,
     updatePoi, addCustomPoi, setDayField, addDay, removeDay,
     addExpense, updateExpense, deleteExpense,
     addAnnotation, undoAnnotation, clearAnnotations,
-    exportData, importData, clearAll,
+    exportData, inspectImport, importData, clearAll,
   }
 })

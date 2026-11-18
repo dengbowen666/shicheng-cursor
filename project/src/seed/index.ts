@@ -1,6 +1,6 @@
 // 构建期种子数据入口。三城种子由腾讯位置服务连接器实采，source:'seed'；
 // 其余城市从已采集的 7 城快照转入，仅作「无 Key 演示数据」，运行时不限制搜索任意城市。
-import type { City, DailyWeather, POI, Trip, TransportMode, TransportSegment } from '../types'
+import type { City, DailyWeather, Leg, POI, Trip, TransportMode, TransportSegment } from '../types'
 import { PRESET_CITIES } from '../data/cities'
 import { daliRaw } from './dali'
 import { lijiangRaw } from './lijiang'
@@ -154,19 +154,27 @@ export function makeDemoTrip(): Trip {
     return s.id
   })
 
-  const day = (n: number, city: City, list: POI[], ids: string[], depart = '09:00') => ({
+  const day = (n: number, city: City, list: POI[], ids: string[], depart = '09:00', legIds: string[] = []) => ({
     dayIndex: n, city: city.name, title: `Day ${n} · ${city.name}`,
     date: `2026-11-${String(15 + n).padStart(2, '0')}`, departTime: depart,
     poiIds: ids, basePoiId: list.find(p => p.role === 'base')?.id, segmentIds: ids.slice(0, -1).map((_, i) => `${prefixOf(n)}-${i}`),
+    legIds,
     weather: SEED_WEATHER[city.name]?.[n - 1] || SEED_WEATHER[city.name]?.[0],
   })
   const prefixOf = (n: number) => `demo-d${n}`
+
+  // L01 示范：Day4 从大理乘高铁赴丽江，城际移动作为一等公民而非文案
+  const demoLeg: Leg = {
+    id: 'demo-leg-1', fromCity: '大理', toCity: '丽江', mode: 'highspeed',
+    departTime: '09:30', arriveTime: '11:05', durationMin: 95, cost: 14500, note: 'D8662', estimated: false,
+  }
+  const legs: Record<string, Leg> = { [demoLeg.id]: demoLeg }
 
   const days = [
     day(1, dali, d1, d1.map(p => p.id)),
     day(2, dali, d2, d2.map(p => p.id)),
     day(3, dali, d3, d3.map(p => p.id)),
-    day(4, lijiang, d4, d4.map(p => p.id)),
+    day(4, lijiang, d4, d4.map(p => p.id), '09:30', [demoLeg.id]),
     day(5, lijiang, d5, d5.map(p => p.id)),
   ]
   link(prefixOf(1), d1, ['walk', 'taxi', 'walk'])
@@ -189,6 +197,7 @@ export function makeDemoTrip(): Trip {
       getSeedPois('丽江').find(p => p.name.includes('小时光客栈'))?.id,
     ].filter(Boolean) as string[],
     segments,
+    legs,
     expenses: [
       { id: 'demo-exp-1', dayIndex: 1, date: '2026-11-16', amount: 48000, category: '住宿', title: '古城观园客栈', createdAt: now },
       { id: 'demo-exp-2', dayIndex: 1, date: '2026-11-16', amount: 15000, category: '门票', title: '崇圣寺三塔', createdAt: now },

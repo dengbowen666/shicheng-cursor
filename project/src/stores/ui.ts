@@ -4,10 +4,11 @@ import { defineStore } from 'pinia'
 export type DrawerKind = 'itinerary' | 'expense' | 'wishlist' | 'today' | 'assist' | 'route' | null
 export type SheetSize = 'peek' | 'half' | 'full'
 export type BaseMapKind = 'paper' | 'standard'
-export type ModalKind = 'settings' | 'keyGuide' | 'export' | 'route' | 'place' | 'customPoi' | 'segment' | null
+export type ModalKind = 'settings' | 'keyGuide' | 'export' | 'route' | 'place' | 'customPoi' | 'segment' | 'leg' | null
 
 const KEY_STORAGE = 'shicheng:key'
 const SETTINGS_STORAGE = 'shicheng:settings'
+const DISMISSED_STORAGE = 'shicheng:dismissed'
 
 /** 构建期注入的默认 Key（.env 的 VITE_TMAP_KEY）；设置面板里填的会覆盖它 */
 const DEFAULT_KEY = (import.meta.env.VITE_TMAP_KEY as string | undefined)?.trim() || ''
@@ -22,6 +23,9 @@ export const useUiStore = defineStore('ui', () => {
   const selectedPoiId = ref<string | null>(null)
   const selectedSegmentId = ref<string | null>(null)
   const sheet = ref<SheetSize>('peek')
+  // O10：桌面左右工作台可折叠，给地图让位（跨攻略保持）
+  const studioCollapsed = ref(false)
+  const inspectorCollapsed = ref(false)
   const modal = ref<ModalKind>(null)
   const modalPayload = ref<any>(null)
   const annotateMode = ref(false)
@@ -30,6 +34,27 @@ export const useUiStore = defineStore('ui', () => {
   const isDemo = ref(true)
   const toasts = ref<ToastItem[]>([])
   const settings = ref<{ standardMap: boolean; baseMap: BaseMapKind }>({ standardMap: false, baseMap: 'paper' })
+
+  // O06：已忽略的智能建议，按攻略隔离、持久化；键由调用方按天生成
+  const dismissedByTrip = ref<Record<string, string[]>>(loadDismissed())
+  function loadDismissed(): Record<string, string[]> {
+    try {
+      const raw = localStorage.getItem(DISMISSED_STORAGE)
+      return raw ? JSON.parse(raw) : {}
+    } catch { return {} }
+  }
+  function persistDismissed() {
+    try { localStorage.setItem(DISMISSED_STORAGE, JSON.stringify(dismissedByTrip.value)) } catch { /* ignore */ }
+  }
+  function isDismissed(tripId: string, key: string): boolean {
+    return !!dismissedByTrip.value[tripId]?.includes(key)
+  }
+  function dismissKey(tripId: string, key: string) {
+    const list = dismissedByTrip.value[tripId] || []
+    if (list.includes(key)) return
+    dismissedByTrip.value[tripId] = [...list, key]
+    persistDismissed()
+  }
 
   try {
     const raw = localStorage.getItem(SETTINGS_STORAGE)
@@ -57,6 +82,7 @@ export const useUiStore = defineStore('ui', () => {
   }
   function openDrawer(kind: DrawerKind) {
     drawer.value = kind
+    if (kind) inspectorCollapsed.value = false
     if (isMobile.value && kind) sheet.value = 'half'
   }
   function closeDrawer() { drawer.value = null }
@@ -65,7 +91,9 @@ export const useUiStore = defineStore('ui', () => {
     modal.value = kind
     modalPayload.value = payload || null
   }
-  function closeModal() { modal.value = null; modalPayload.value = null }
+  function closeModal() { modal.value = null; modalPayload.value = null; clearSelection() }
+  /** O08：关闭弹层/按 Esc 时一并清掉选中的地点与交通段，避免幽灵状态 */
+  function clearSelection() { selectedPoiId.value = null; selectedSegmentId.value = null }
   function toast(text: string, action?: string, onAction?: () => void) {
     const t = { id: Date.now() + Math.random(), text, action, onAction }
     toasts.value.push(t)
@@ -91,8 +119,9 @@ export const useUiStore = defineStore('ui', () => {
 
   return {
     activeDayIndex, viewMode, layers, drawer, selectedPoiId, selectedSegmentId,
-    sheet, modal, modalPayload, annotateMode, replaying, mapKey, isDemo, toasts, settings, isMobile,
-    setKey, openDrawer, closeDrawer, toggleLayer, openModal, closeModal, toast, dismiss, runToastAction,
+    sheet, studioCollapsed, inspectorCollapsed, modal, modalPayload, annotateMode, replaying, mapKey, isDemo, toasts, settings, isMobile,
+    dismissedByTrip, isDismissed, dismissKey,
+    setKey, openDrawer, closeDrawer, toggleLayer, openModal, closeModal, clearSelection, toast, dismiss, runToastAction,
     notifyKeyGuide,
   }
 })
