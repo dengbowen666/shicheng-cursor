@@ -1,0 +1,17 @@
+{
+  "name": "拾程 · 国风旅行地图攻略编辑器",
+  "short_name": "拾程",
+  "description": "在水墨中国地图上搜城市、排日程、选交通，把每一程拾进画卷。",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#EFE5D2",
+  "theme_color": "#EFE5D2",
+  "orientation": "any",
+  "icons": [
+    { "src": "./icons/seal.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" },
+    { "src": "./icons/seal-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "./icons/seal-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" },
+    { "src": "./favicon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ]
+}

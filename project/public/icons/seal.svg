@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="þ">
+  <rect width="512" height="512" fill="#EFE5D2"/>
+  <rect x="72" y="72" width="368" height="368" rx="18" fill="#A64834"/>
+  <rect x="96" y="96" width="320" height="320" rx="10" fill="none" stroke="#F7EFE0" stroke-width="10" opacity=".55"/>
+  <text x="256" y="232" text-anchor="middle" font-family="KaiTi, STKaiti, serif" font-size="128" fill="#F7EFE0">þ</text>
+  <text x="256" y="372" text-anchor="middle" font-family="KaiTi, STKaiti, serif" font-size="128" fill="#F7EFE0"></text>
+</svg>

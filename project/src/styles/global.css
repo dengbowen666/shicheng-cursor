@@ -1,0 +1,267 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ============ 拾程 · 宋韵雅致设计系统 ============ */
+:root {
+  --paper: #EFE5D2;
+  --mist: #FAF4E6;
+  --cyanq: #7F9B95;
+  --ochre: #A9825C;
+  --ink: #26231F;
+  --cinnabar: #A64834;
+  --hill: #B7C8C2;
+  --gray-ink: #665F53;
+  --paper-shift: 0%;
+  --cursor-ink: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='32' viewBox='0 0 32 32'%3E%3Ccircle cx='8' cy='8' r='6.2' fill='%23FAF4E6' stroke='%23A64834' stroke-width='1.8'/%3E%3Ccircle cx='8' cy='8' r='2.3' fill='%2326231F'/%3E%3C/svg%3E") 8 8;
+  --cursor-hand: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='32' viewBox='0 0 32 32'%3E%3Cpath d='M9 14V8.5a1.5 1.5 0 0 1 3 0V14m0 0V7.5a1.5 1.5 0 0 1 3 0V14m0 0V8.2a1.5 1.5 0 0 1 3 0V14m0 0v-3.2a1.5 1.5 0 0 1 3 0V16c0 4.2-2.2 7-6.5 7H14c-3.4 0-6-2.2-6-5.2V14a1.5 1.5 0 0 1 3 0z' fill='%23FAF4E6' stroke='%23A64834' stroke-width='1.5' stroke-linejoin='round'/%3E%3C/svg%3E") 8 6;
+  --cursor-point: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='32' viewBox='0 0 32 32'%3E%3Cpath d='M6 4 L6 22 L11 17 L15 26 L18 25 L14 16 L21 16 Z' fill='%23A64834' stroke='%23FAF4E6' stroke-width='1.2' stroke-linejoin='round'/%3E%3C/svg%3E") 6 4;
+}
+
+html, body, #app {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  cursor: var(--cursor-ink), auto;
+}
+body {
+  font-family: 'Noto Serif SC', 'Songti SC', 'STSong', 'SimSun', Georgia, serif;
+  color: var(--ink);
+  background: var(--paper);
+  -webkit-font-smoothing: antialiased;
+  overflow: hidden;
+}
+* { box-sizing: border-box; }
+button, input, textarea, select { font-family: inherit; }
+a, button, [role='button'], [role='tab'], [role='link'] {
+  cursor: var(--cursor-point), pointer;
+}
+input, textarea, select, [contenteditable='true'] {
+  cursor: text;
+}
+
+.map-cursor {
+  cursor: var(--cursor-hand), grab !important;
+}
+.map-cursor:active {
+  cursor: var(--cursor-hand), grabbing !important;
+}
+.map-cursor.is-annotate {
+  cursor: crosshair !important;
+}
+.map-cursor [data-map-interactive] {
+  cursor: var(--cursor-point), pointer !important;
+}
+
+/* 宣纸纤维 */
+.paper-texture {
+  background-color: var(--paper);
+  background-image:
+    radial-gradient(ellipse at 8% 4%, rgba(127,155,149,.12) 0%, transparent 38%),
+    radial-gradient(ellipse at 92% 86%, rgba(169,130,92,.12) 0%, transparent 42%),
+    radial-gradient(ellipse at 58% 38%, rgba(250,244,230,.42) 0%, transparent 58%),
+    url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.86' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.055'/%3E%3C/svg%3E");
+  filter: brightness(calc(1 - var(--paper-shift)));
+}
+
+/* 宣纸呼吸：夜间偏暖偏暗 4%，雨天偏青灰 4%（D46） */
+body.paper-night { --paper-shift: 4%; }
+body.paper-rain { --paper: #EDF0EB; }
+
+/* 细双边线：1px + 3px，间距 2px */
+.double-border {
+  border: 1px solid rgba(44,42,38,.42);
+  outline: 1px solid rgba(44,42,38,.2);
+  outline-offset: -4px;
+}
+
+/* 宣纸卡片 */
+.paper-card {
+  background:
+    linear-gradient(158deg, rgba(251,245,232,.96) 0%, rgba(243,231,209,.94) 100%),
+    url("data:image/svg+xml,%3Csvg viewBox='0 0 120 120' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='c'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23c)' opacity='.035'/%3E%3C/svg%3E");
+  border: 1px solid rgba(133,95,66,.26);
+  border-radius: 2px;
+  outline: 1px solid rgba(133,95,66,.10);
+  outline-offset: -3px;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.5), 0 10px 24px -24px rgba(38,35,31,.7);
+}
+.paper-card:hover { border-color: rgba(166,72,52,.34); box-shadow: inset 0 1px 0 rgba(255,255,255,.55), 0 12px 26px -20px rgba(38,35,31,.5); }
+
+/* 印章：朱砂方印 + 印泥微渗 */
+.seal {
+  display: inline-flex; align-items: center; justify-content: center;
+  background: var(--cinnabar); color: #F7EFE0;
+  font-family: 'Ma Shan Zheng', 'Noto Serif SC', serif;
+  border-radius: 2px; position: relative; overflow: hidden;
+  box-shadow: 0 2px 5px -2px rgba(166,72,52,.45);
+}
+.seal::after {
+  content: ''; position: absolute; inset: 0; pointer-events: none;
+  background: url("data:image/svg+xml,%3Csvg viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='s'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.6' numOctaves='2'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23s)' opacity='.28'/%3E%3C/svg%3E");
+  mix-blend-mode: screen; opacity: .33;
+}
+.seal-outline { background: transparent; color: var(--cinnabar); border: 1px solid var(--cinnabar); box-shadow: none; }
+.seal-muted { background: #8D8880; color: #F7EFE0; }
+
+@keyframes sealStamp {
+  0% { transform: scale(1.45) rotate(-8deg); opacity: 0; box-shadow: 0 0 0 0 rgba(166,72,52,.5); }
+  60% { transform: scale(.94) rotate(2deg); opacity: 1; box-shadow: 0 0 0 5px rgba(166,72,52,.16); }
+  100% { transform: scale(1) rotate(0); opacity: 1; box-shadow: 0 0 0 8px rgba(166,72,52,0); }
+}
+.seal-stamp { animation: sealStamp .25s cubic-bezier(.2,.9,.3,1.3) both; }
+
+@keyframes inkReveal {
+  from { clip-path: circle(0% at 50% 50%); opacity: .4; }
+  to { clip-path: circle(120% at 50% 50%); opacity: 1; }
+}
+.ink-reveal { animation: inkReveal .8s ease-out both; }
+
+/* 卷轴抽屉：轴头 + 徐展 */
+.scroll-drawer { animation: unroll .3s ease-out both; transform-origin: right center; }
+@keyframes unroll {
+  0% { transform: translateX(26px) rotateY(-8deg); opacity: .2; }
+  100% { transform: translateX(0) rotateY(0); opacity: 1; }
+}
+.scroll-axis {
+  background: linear-gradient(180deg, #B08D70, #8E6E52 45%, #B08D70);
+  border-radius: 8px;
+}
+
+/* 标签胶囊 */
+.tag-pill {
+  font-size: 12px; background: #FAF0D5; color: #A37D14;
+  border: 1px solid #ECD5A2; border-radius: 20px; padding: 2px 9px;
+}
+
+/* 透明细滚动条 */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: rgba(176,141,112,.06); }
+::-webkit-scrollbar-thumb { background: rgba(143,169,166,.5); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(110,139,136,.7); }
+.hide-scrollbar { scrollbar-width: none; }
+.hide-scrollbar::-webkit-scrollbar { display: none; }
+
+/* 动效基线 */
+.fade-enter-active, .fade-leave-active { transition: opacity .25s ease; }
+.fade-enter-from, .fade-leave-to { opacity: 0; }
+.slide-enter-active, .slide-leave-active { transition: transform .3s ease-out, opacity .3s ease-out; }
+.slide-enter-from, .slide-leave-to { transform: translateX(26px); opacity: 0; }
+.sheet-enter-active, .sheet-leave-active { transition: transform .32s cubic-bezier(.22,.8,.3,1); }
+.sheet-enter-from, .sheet-leave-to { transform: translateY(100%); }
+.toast-enter-active, .toast-leave-active { transition: transform .2s ease, opacity .2s ease; }
+.toast-enter-from, .toast-leave-to { transform: translateY(-12px); opacity: 0; }
+
+/* 视觉红线：禁止紫色/蓝紫渐变；此处仅提供宣纸与青赭 */
+.ink-divider { height: 1px; background: linear-gradient(90deg, transparent, rgba(44,42,38,.35) 12%, rgba(44,42,38,.35) 88%, transparent); }
+.vertical-text { writing-mode: vertical-rl; text-orientation: upright; }
+.img-fallback { background: linear-gradient(135deg, #E8DFC9, #D9E3DF 50%, #EBD9C8); }
+/* 印章脉冲：只作用于包住印文的 <g>，用 fill-box 让缩放围绕印章自身中心 */
+.pin-pulse { animation: pinPulse 2.6s ease-in-out infinite; transform-box: fill-box; transform-origin: 50% 50%; }
+@keyframes pinPulse { 0%,100% { transform: scale(1); } 50% { transform: scale(1.09); } }
+
+/* SVG 节点不能使用会覆盖 transform 属性的 CSS 动画，改用透明度浮现 */
+.marker-appear { animation: markerAppear .45s ease-out both; }
+@keyframes markerAppear { from { opacity: 0; } to { opacity: 1; } }
+
+/* 移动端 bottom sheet 三档 */
+.sheet-peek { height: 72px; }
+.sheet-half { height: 45vh; }
+.sheet-full { height: 92vh; }
+
+/* ============ 编辑器：舆图工作台 ============ */
+.editor-shell { background: var(--paper); }
+
+.studio-panel {
+  background:
+    linear-gradient(180deg, rgba(250,244,230,.97) 0%, rgba(239,229,210,.96) 100%),
+    url("data:image/svg+xml,%3Csvg viewBox='0 0 160 160' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='p'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.8' numOctaves='3'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23p)' opacity='.04'/%3E%3C/svg%3E");
+  border-right: 1px solid rgba(38,35,31,.22);
+  box-shadow: 20px 0 45px -48px rgba(38,35,31,.75);
+}
+
+.inspector-panel {
+  background:
+    linear-gradient(180deg, rgba(250,244,230,.98) 0%, rgba(239,229,210,.97) 100%),
+    url("data:image/svg+xml,%3Csvg viewBox='0 0 160 160' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='i'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.8' numOctaves='3'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23i)' opacity='.04'/%3E%3C/svg%3E");
+  border-left: 1px solid rgba(38,35,31,.24);
+  box-shadow: -20px 0 45px -48px rgba(38,35,31,.75);
+}
+
+.map-toolbar {
+  background: linear-gradient(180deg, rgba(250,244,230,.97), rgba(240,230,211,.93));
+  border-bottom: 1px solid rgba(38,35,31,.18);
+  box-shadow: 0 8px 18px -22px rgba(38,35,31,.7);
+}
+
+.map-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  height: 30px;
+  padding: 0 8px;
+  border: 1px solid transparent;
+  border-radius: 1px;
+  color: var(--gray-ink);
+  font-family: 'Noto Serif SC', 'Songti SC', 'STSong', serif;
+  font-size: 10px;
+  letter-spacing: .04em;
+  transition: color .18s, background .18s, border-color .18s;
+}
+.map-action:hover { color: var(--cinnabar); background: rgba(166,72,52,.055); }
+.map-action.is-active { color: var(--cinnabar); border-color: rgba(166,72,52,.32); background: rgba(166,72,52,.08); }
+
+.map-stage {
+  background: #E8DCC4;
+  isolation: isolate;
+}
+.map-stage::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 6;
+  pointer-events: none;
+  box-shadow: inset 0 0 90px rgba(38,35,31,.10), inset 0 0 18px rgba(38,35,31,.06);
+}
+
+/* 真实瓦片上的纸色：轻滤镜，路网建筑必须可辨，不再乘算示意山海 */
+.gl-paper {
+  filter: saturate(.62) brightness(1.04) contrast(1.04) sepia(.10);
+}
+.gl-wash {
+  background:
+    radial-gradient(ellipse 92% 78% at 28% 22%, rgba(250, 244, 230, 0.35) 0%, transparent 58%),
+    var(--paper, #F2ECE0);
+  opacity: .28;
+  mix-blend-mode: color;
+}
+.gl-mist {
+  background:
+    radial-gradient(ellipse 120% 42% at 48% 32%, rgba(250, 246, 237, 0.35) 0%, transparent 70%),
+    linear-gradient(165deg, rgba(242, 236, 224, 0.12), transparent 50%);
+  opacity: .4;
+  mix-blend-mode: soft-light;
+}
+.gl-ink-bleed {
+  background:
+    radial-gradient(ellipse 90% 80% at 50% 50%, transparent 55%, rgba(38, 35, 31, 0.08) 100%);
+  opacity: .55;
+  mix-blend-mode: multiply;
+}
+.gl-grain {
+  background-image:
+    radial-gradient(128% 100% at 50% 38%, rgba(239, 229, 210, 0) 48%, rgba(93, 87, 77, 0.2) 100%),
+    url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.78' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.12'/%3E%3C/svg%3E");
+  opacity: .78;
+  mix-blend-mode: soft-light;
+}
+
+/* 竖排题签 */
+.vertical-text { writing-mode: vertical-rl; text-orientation: upright; }
+
+/* 纸张毛边：面板顶部的一条淡墨 */
+.brush-rule {
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(38,35,31,.34) 8%, rgba(38,35,31,.16) 55%, transparent);
+}
