@@ -1,0 +1,59 @@
+{
+  "_source": "腾讯位置服务 weather 接口，采集于 2026-11-17",
+  "成都": {
+    "days": [
+      { "date": "2026-11-17", "day": "多云", "night": "阴", "tempMax": 17, "tempMin": 10 },
+      { "date": "2026-11-18", "day": "多云", "night": "晴", "tempMax": 17, "tempMin": 7 },
+      { "date": "2026-11-19", "day": "多云", "night": "多云", "tempMax": 17, "tempMin": 6 },
+      { "date": "2026-11-20", "day": "晴", "night": "晴", "tempMax": 20, "tempMin": 7 }
+    ]
+  },
+  "杭州": {
+    "days": [
+      { "date": "2026-11-17", "day": "小雨", "night": "小雨", "tempMax": 16, "tempMin": 11 },
+      { "date": "2026-11-18", "day": "晴", "night": "晴", "tempMax": 15, "tempMin": 6 },
+      { "date": "2026-11-19", "day": "晴", "night": "晴", "tempMax": 13, "tempMin": 6 },
+      { "date": "2026-11-20", "day": "晴", "night": "晴", "tempMax": 13, "tempMin": 5 }
+    ]
+  },
+  "西安": {
+    "days": [
+      { "date": "2026-11-17", "day": "阴", "night": "多云", "tempMax": 10, "tempMin": 4 },
+      { "date": "2026-11-18", "day": "多云", "night": "多云", "tempMax": 10, "tempMin": 2 },
+      { "date": "2026-11-19", "day": "多云", "night": "晴", "tempMax": 13, "tempMin": 0 },
+      { "date": "2026-11-20", "day": "多云", "night": "晴", "tempMax": 16, "tempMin": 1 }
+    ]
+  },
+  "重庆": {
+    "days": [
+      { "date": "2026-11-17", "day": "小雨", "night": "小雨", "tempMax": 15, "tempMin": 12 },
+      { "date": "2026-11-18", "day": "小雨", "night": "阴", "tempMax": 14, "tempMin": 11 },
+      { "date": "2026-11-19", "day": "阴", "night": "多云", "tempMax": 14, "tempMin": 11 },
+      { "date": "2026-11-20", "day": "晴", "night": "晴", "tempMax": 17, "tempMin": 10 }
+    ]
+  },
+  "厦门": {
+    "days": [
+      { "date": "2026-11-17", "day": "晴", "night": "多云", "tempMax": 26, "tempMin": 20 },
+      { "date": "2026-11-18", "day": "小雨", "night": "阴", "tempMax": 24, "tempMin": 18 },
+      { "date": "2026-11-19", "day": "多云", "night": "多云", "tempMax": 21, "tempMin": 15 },
+      { "date": "2026-11-20", "day": "阴", "night": "晴", "tempMax": 18, "tempMin": 13 }
+    ]
+  },
+  "北京": {
+    "days": [
+      { "date": "2026-11-17", "day": "阴", "night": "多云", "tempMax": 9, "tempMin": 1 },
+      { "date": "2026-11-18", "day": "晴", "night": "晴", "tempMax": 6, "tempMin": -1 },
+      { "date": "2026-11-19", "day": "晴", "night": "晴", "tempMax": 6, "tempMin": -2 },
+      { "date": "2026-11-20", "day": "多云", "night": "晴", "tempMax": 6, "tempMin": -2 }
+    ]
+  },
+  "昆明": {
+    "days": [
+      { "date": "2026-11-17", "day": "多云", "night": "多云", "tempMax": 20, "tempMin": 8 },
+      { "date": "2026-11-18", "day": "多云", "night": "多云", "tempMax": 16, "tempMin": 8 },
+      { "date": "2026-11-19", "day": "小雨", "night": "阴", "tempMax": 20, "tempMin": 8 },
+      { "date": "2026-11-20", "day": "阴", "night": "阴", "tempMax": 16, "tempMin": 9 }
+    ]
+  }
+}

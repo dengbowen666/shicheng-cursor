@@ -1,0 +1,62 @@
+{
+  "time": "2026-11-17T08:29:04.217Z",
+  "url": "http://127.0.0.1:5183/#/",
+  "checks": [
+    {
+      "name": "首页卷首渲染",
+      "ok": true,
+      "detail": "已截图 v4-01-home"
+    },
+    {
+      "name": "省份水墨下钻",
+      "ok": true,
+      "detail": "已点击云南省并聚焦"
+    },
+    {
+      "name": "新建攻略向导",
+      "ok": true,
+      "detail": "/trip/trip-mwkfkiis-6zxaa"
+    },
+    {
+      "name": "打开示例攻略",
+      "ok": true,
+      "detail": "地图与日程面板均已渲染"
+    },
+    {
+      "name": "交通方式切换",
+      "ok": true,
+      "detail": "改交通方式 · taxi → 改交通方式 · walk"
+    },
+    {
+      "name": "记账落账",
+      "ok": true,
+      "detail": "已记一笔 ¥88.50"
+    },
+    {
+      "name": "今天视图",
+      "ok": true,
+      "detail": "今天视图已展开"
+    },
+    {
+      "name": "导出三件套弹层",
+      "ok": true,
+      "detail": "PNG / HTML / JSON 三个入口可见"
+    },
+    {
+      "name": "移动端首页",
+      "ok": true,
+      "detail": "已截图 v4-10-mobile-home"
+    },
+    {
+      "name": "移动端编辑器与底部抽屉",
+      "ok": true,
+      "detail": "bottom sheet 已展开"
+    },
+    {
+      "name": "控制台无脚本异常",
+      "ok": true,
+      "detail": ""
+    }
+  ],
+  "consoleErrors": []
+}

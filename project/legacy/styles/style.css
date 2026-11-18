@@ -1,0 +1,127 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ============ 宋韵雅致 · 全局设计系统 ============ */
+:root {
+  --paper: #F2ECE0;
+  --mist: #FAF6ED;
+  --celadon: #8FA9A6;
+  --ochre: #B08D70;
+  --ink: #2C2A26;
+  --cinnabar: #A64834;
+}
+
+* { box-sizing: border-box; }
+
+html, body, #app {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: 'Noto Serif SC', 'Songti SC', 'SimSun', 'STSong', serif;
+  color: var(--ink);
+  background: var(--paper);
+  -webkit-font-smoothing: antialiased;
+  overflow: hidden;
+}
+
+/* 宣纸纤维纹理（多层噪点 + 柔和渐变） */
+.paper-texture {
+  background-color: #F2ECE0;
+  background-image:
+    radial-gradient(circle at 20% 30%, rgba(176,141,112,0.06) 0%, transparent 45%),
+    radial-gradient(circle at 80% 70%, rgba(143,169,166,0.08) 0%, transparent 50%),
+    url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.045'/%3E%3C/svg%3E");
+}
+
+/* 细双边线（卷轴边框） */
+.double-border {
+  border: 1px solid rgba(44,42,38,0.55);
+  outline: 1px solid rgba(44,42,38,0.28);
+  outline-offset: -4px;
+}
+
+/* 印章：朱砂方印 */
+.seal {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--cinnabar);
+  color: #F7EFE0;
+  font-family: 'Ma Shan Zheng', 'Noto Serif SC', serif;
+  border-radius: 2px;
+  box-shadow: 0 2px 6px -2px rgba(166,72,52,0.5);
+  position: relative;
+  overflow: hidden;
+}
+.seal::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: url("data:image/svg+xml,%3Csvg viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='s'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.6' numOctaves='2'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23s)' opacity='0.25'/%3E%3C/svg%3E");
+  mix-blend-mode: screen;
+  opacity: 0.35;
+  pointer-events: none;
+}
+
+/* 宣纸卡片 */
+.paper-card {
+  background: linear-gradient(145deg, #FAF6ED 0%, #F4EDDF 100%);
+  border: 1px solid rgba(176,141,112,0.45);
+  box-shadow: 0 6px 22px -10px rgba(44,42,38,0.35), inset 0 0 24px rgba(176,141,112,0.08);
+  position: relative;
+}
+.paper-card::before {
+  content: '';
+  position: absolute;
+  inset: 3px;
+  border: 1px solid rgba(176,141,112,0.22);
+  pointer-events: none;
+}
+
+/* 墨线分隔 */
+.ink-divider {
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(44,42,38,0.4) 12%, rgba(44,42,38,0.4) 88%, transparent);
+}
+
+/* 竖排文字 */
+.vertical-text {
+  writing-mode: vertical-rl;
+  text-orientation: upright;
+}
+
+/* 滚动条定制 */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: rgba(176,141,112,0.06); }
+::-webkit-scrollbar-thumb { background: rgba(143,169,166,0.5); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(110,139,136,0.7); }
+
+.ink-mountain { filter: drop-shadow(0 2px 3px rgba(110,106,98,0.15)); }
+
+.btn-seal { transition: transform 0.18s ease, box-shadow 0.18s ease, background 0.18s ease; }
+.btn-seal:hover { transform: translateY(-1px); }
+.btn-seal:active { transform: translateY(0) scale(0.98); }
+
+.drawer-scroll { scroll-behavior: smooth; }
+.hide-scrollbar::-webkit-scrollbar { display: none; }
+.hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+.img-fallback {
+  background: linear-gradient(135deg, #E8DFC9 0%, #D9E3DF 50%, #EBD9C8 100%);
+}
+
+.slide-enter-active, .slide-leave-active { transition: transform 0.34s cubic-bezier(0.22,0.8,0.3,1), opacity 0.34s; }
+.slide-enter-from, .slide-leave-to { transform: translateX(100%); opacity: 0; }
+
+.fade-enter-active, .fade-leave-active { transition: opacity 0.25s; }
+.fade-enter-from, .fade-leave-to { opacity: 0; }
+
+@keyframes pin-pulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.08); }
+}
+.pin-pulse { animation: pin-pulse 2.4s ease-in-out infinite; }
