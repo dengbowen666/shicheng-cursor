@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import { useTripStore } from '../../stores/trip'
 import { useUiStore } from '../../stores/ui'
 import { dayStats } from '../../lib/timeline'
@@ -7,8 +7,12 @@ import { haversineFlat, recommendMode, SMART_THRESHOLD } from '../../lib/estimat
 import { MODE_LABEL } from '../../types'
 import type { POI, TransportSegment } from '../../types'
 import {
-  Sparkles, Route, AlertTriangle, Sun, Check, X, ArrowRight, Lightbulb, ListOrdered,
+  Sparkles, Route, AlertTriangle, Sun, Check, X, ArrowRight, Lightbulb, ListOrdered, LoaderCircle,
 } from 'lucide-vue-next'
+import {
+  AI_ENABLED, advise, aiReady, adviceCacheKey,
+  type AdviceRequest, type AdviceAction,
+} from '../../lib/ai'
 
 const props = defineProps<{ dayIndex: number }>()
 const trip = useTripStore()
@@ -120,8 +124,115 @@ function fillUnderload() {
   dismiss(key('underload'))
 }
 
+/* ⑤ AI 建议卡：手动触发、受限动作、复用现有 store 方法 */
+const aiLoading = ref(false)
+const aiAdvice = ref<AdviceAction | null>(null)
+const aiFailed = ref(false)
+const aiLastAt = ref(0)
+const aiSig = computed(() => [
+  trip.activeTrip?.id || '',
+  props.dayIndex,
+  (day.value?.poiIds || []).join(','),
+  (day.value?.segmentIds || []).map(id => `${id}:${segmentMap.value[id]?.mode || ''}`).join(','),
+].join('|'))
+const aiCacheKey = computed(() => adviceCacheKey(tripId.value, props.dayIndex, aiSig.value))
+
+function buildAdviceReq(): AdviceRequest {
+  const t = trip.activeTrip
+  const weatherText = (day.value?.weather as any)?.text || ''
+  return {
+    dayIndex: props.dayIndex,
+    city: day.value?.city || t?.cities[0]?.name || '',
+    date: t?.startDate,
+    departTime: day.value?.departTime || '09:00',
+    stops: stops.value.map(p => ({
+      name: p.name,
+      category: p.category,
+      stayMin: p.stayMinutes || 60,
+      arrive: '—',
+    })),
+    segments: (day.value?.segmentIds || []).map(id => segmentMap.value[id]).filter(Boolean).map(seg => {
+      const a = poiMap.value[seg.fromPoiId]
+      const b = poiMap.value[seg.toPoiId]
+      return {
+        from: a?.name || '?', to: b?.name || '?', mode: seg.mode,
+        km: seg.distanceKm, min: seg.durationMin,
+      }
+    }),
+    weather: weatherText || undefined,
+    pool: t ? (t.wishlist || []).map(id => t.pois[id]?.name).filter((n): n is string => !!n).slice(0, 8) : [],
+  }
+}
+
+async function askAi() {
+  if (aiLoading.value || !aiReady()) return
+  const now = Date.now()
+  if (now - aiLastAt.value < 3000) return
+  aiLastAt.value = now
+  aiLoading.value = true
+  aiFailed.value = false
+  aiAdvice.value = null
+  const result = await advise(buildAdviceReq(), { cacheKey: aiCacheKey.value, signalKey: `day-${tripId.value}-${props.dayIndex}` })
+  aiLoading.value = false
+  if (!result) { aiFailed.value = true; return }
+  // 与 ① 卡去重：同段同方式已由规则卡建议则不重复渲染
+  if (result.action === 'mode' && distanceTips.value.some(t =>
+    poiMap.value[t.seg.fromPoiId]?.name === result.seg[0] &&
+    poiMap.value[t.seg.toPoiId]?.name === result.seg[1] && t.mode === result.mode)) return
+  aiAdvice.value = result
+}
+
+function adoptAi() {
+  const a = aiAdvice.value
+  if (!a) return
+  const byName = (n: string) => stops.value.find(p => p.name === n)
+  const t = trip.activeTrip
+  switch (a.action) {
+    case 'mode': {
+      const from = byName(a.seg[0]), to = byName(a.seg[1])
+      if (!from || !to) return
+      const seg = (day.value?.segmentIds || []).map(id => segmentMap.value[id])
+        .find(s => s && s.fromPoiId === from.id && s.toPoiId === to.id)
+      if (!seg) return
+      trip.setSegmentMode(props.dayIndex, seg.id, a.mode)
+      ui.toast(`已改为${MODE_LABEL[a.mode]}`, '撤销', undo)
+      break
+    }
+    case 'reorder': {
+      const order = a.order.map(n => byName(n)?.id).filter((id): id is string => !!id)
+      if (order.length !== a.order.length) return
+      trip.reorderByOrder(props.dayIndex, order)
+      ui.toast('已按 AI 建议调整顺序', '撤销', undo)
+      break
+    }
+    case 'trim': {
+      const poi = byName(a.poi)
+      if (!poi) return
+      trip.removeFromDay(poi.id, props.dayIndex)
+      ui.toast(`已精简「${poi.name}」`, '撤销', undo)
+      break
+    }
+    case 'fill': {
+      const poi = t ? (t.wishlist || []).map(id => t.pois[id]).find(p => p && p.name === a.poi) : null
+      if (!poi) return
+      const r = trip.addToDay(poi, props.dayIndex)
+      if (r.existedIn?.length) ui.toast(`已在第 ${r.existedIn.join('、')} 日`)
+      else ui.toast(`已补入「${poi.name}」`, '撤销', undo)
+      break
+    }
+    case 'none': break
+  }
+  dismiss(key('ai'))
+  aiAdvice.value = null
+}
+function ignoreAi() {
+  dismiss(key('ai'))
+  aiAdvice.value = null
+}
+
+const aiVisible = computed(() => AI_ENABLED && aiReady() && !dismissed(key('ai')))
 const anyTip = computed(() => distanceTips.value.length > 0 || proposedOrder.value ||
-  overload.value || underload.value)
+  overload.value || underload.value || (aiVisible.value && (aiAdvice.value || aiLoading.value)))
 </script>
 
 <template>
@@ -134,11 +245,47 @@ const anyTip = computed(() => distanceTips.value.length > 0 || proposedOrder.val
       <span class="font-cn text-[10px] text-inkLight inline-flex items-center gap-1"><Lightbulb :size="11" />只建议 · 取弃由你</span>
     </header>
 
+    <!-- AI 触发：仅内网构建 + 端点/Key 齐备时渲染；公网构建此块整块消失 -->
+    <div v-if="aiVisible" class="px-3 py-2 border-b border-ink/10 flex items-center justify-between gap-2">
+      <span class="font-cn text-[10px] text-inkLight tracking-wide inline-flex items-center gap-1"><Sparkles :size="11" class="text-cinnabar" />AI 通盘</span>
+      <button
+        type="button"
+        class="h-7 px-2 inline-flex items-center gap-1 border border-cinnabar/40 text-cinnabar font-cn text-[10px] hover:bg-cinnabar/10 disabled:opacity-50"
+        :disabled="aiLoading" @click="askAi"
+      >
+        <LoaderCircle v-if="aiLoading" :size="11" class="animate-spin" />
+        <Sparkles v-else :size="11" />
+        {{ aiLoading ? '正在看…' : '请 AI 通盘看一眼' }}
+      </button>
+    </div>
+    <p v-if="aiFailed" class="px-3 py-1.5 font-cn text-[10px] text-inkLight/70">未取到建议</p>
+
     <div v-if="!anyTip" class="px-3 py-5 text-center font-cn text-[11px] text-inkLight">
       此日安排妥帖，暂无建议
     </div>
 
     <div v-else class="p-3 space-y-2.5">
+      <!-- ⑤ AI 建议卡：受限动作，采用走现有 store 方法 -->
+      <div v-if="aiAdvice" class="p-2.5 border border-cinnabar/40 bg-cinnabar/5" data-ai-card>
+        <div class="flex items-start gap-2">
+          <Sparkles :size="14" class="text-cinnabar shrink-0 mt-0.5" />
+          <div class="flex-1 min-w-0">
+            <p class="font-cn text-[11px] text-ink leading-relaxed">{{ aiAdvice.reason }}</p>
+            <div v-if="aiAdvice.action !== 'none'" class="mt-2 flex items-center gap-1.5">
+              <button class="h-7 px-2 inline-flex items-center gap-1 bg-cinnabar text-mist font-cn text-[10px]" @click="adoptAi">
+                <Check :size="11" /> 采用
+              </button>
+              <button class="h-7 px-2 inline-flex items-center gap-1 border border-ink/25 text-inkLight font-cn text-[10px]" @click="ignoreAi">
+                <X :size="11" /> 忽略
+              </button>
+            </div>
+            <div v-else class="mt-2">
+              <button class="h-7 px-2 border border-ink/25 text-inkLight font-cn text-[10px]" @click="ignoreAi">知道了</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <!-- ① 距离推荐 -->
       <div v-for="tip in distanceTips" :key="tip.seg.id" class="p-2.5 border border-cyanq/50 bg-paper/70">
         <div class="flex items-start gap-2">

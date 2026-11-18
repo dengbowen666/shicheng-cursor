@@ -1,9 +1,10 @@
 <script setup lang="ts">
 import { ref, watch } from 'vue'
-import { X, KeyRound, Info, Check, Map, FileJson, Upload, Trash2, Settings2, CircleHelp } from 'lucide-vue-next'
+import { X, KeyRound, Info, Check, Map, FileJson, Upload, Trash2, Settings2, CircleHelp, Sparkles, PlugZap } from 'lucide-vue-next'
 import { useUiStore, type BaseMapKind } from '../../stores/ui'
 import { useTripStore, type ImportPolicy } from '../../stores/trip'
 import { exportJson } from '../../lib/export'
+import { AI_ENABLED, aiBase, aiKey, setAi } from '../../lib/ai'
 import ImportConfirmModal from './ImportConfirmModal.vue'
 
 const emit = defineEmits<{ close: [] }>()
@@ -87,6 +88,43 @@ function openKeyGuide() {
   emit('close')
   ui.openModal('keyGuide')
 }
+
+/* AI 接入（仅内网构建出现）：端点/Key/测试连接 */
+const draftAiBase = ref(aiBase())
+const draftAiKey = ref(aiKey())
+const aiTesting = ref(false)
+const aiTestResult = ref<'ok' | 'fail' | null>(null)
+function saveAi() {
+  setAi(draftAiBase.value.trim().replace(/\/+$/, ''), draftAiKey.value.trim())
+  aiTestResult.value = null
+  ui.toast('AI 端点已保存')
+}
+async function testAi() {
+  const base = draftAiBase.value.trim().replace(/\/+$/, '')
+  const key = draftAiKey.value.trim()
+  if (!base || !key) { ui.toast('请先填端点与 Key'); return }
+  aiTesting.value = true
+  aiTestResult.value = null
+  const ctrl = new AbortController()
+  const timer = setTimeout(() => ctrl.abort(), 8000)
+  try {
+    const res = await fetch(`${base}/chat-messages`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        inputs: { system: '回复单个字：好' },
+        query: '测试连接', response_mode: 'blocking', conversation_id: '', user: 'shicheng-local',
+      }),
+      signal: ctrl.signal,
+    })
+    aiTestResult.value = res.ok ? 'ok' : 'fail'
+  } catch {
+    aiTestResult.value = 'fail'
+  } finally {
+    clearTimeout(timer)
+    aiTesting.value = false
+  }
+}
 </script>
 
 <template>
@@ -147,6 +185,42 @@ function openKeyGuide() {
         </button>
       </section>
 
+      <!-- AI 建议（仅内网构建可见；公网构建整块不渲染） -->
+      <section v-if="AI_ENABLED" class="space-y-3 mt-4">
+        <h3 class="font-cn text-[11px] text-inkLight tracking-widest border-b border-ink/10 pb-1.5 inline-flex items-center gap-1.5">
+          <Sparkles :size="12" class="text-cinnabar" /> AI 建议
+        </h3>
+        <div>
+          <label class="flex items-center gap-2 font-cn text-xs text-ink mb-1.5">端点（Dify Service API）</label>
+          <input
+            v-model="draftAiBase" type="text" placeholder="http://10.32.16.199/v1"
+            class="w-full h-9 px-3 bg-paper/70 border border-ink/20 font-num text-xs text-ink outline-none focus:border-cinnabar"
+          />
+        </div>
+        <div>
+          <label class="flex items-center gap-2 font-cn text-xs text-ink mb-1.5">App Key</label>
+          <input
+            v-model="draftAiKey" type="password" placeholder="app-xxxxxxxx"
+            class="w-full h-9 px-3 bg-paper/70 border border-ink/20 font-num text-xs text-ink outline-none focus:border-cinnabar"
+          />
+        </div>
+        <div class="flex gap-2">
+          <button class="h-9 px-3 bg-cinnabar text-mist font-cn text-xs hover:bg-cinnabarDeep" @click="saveAi">保存</button>
+          <button
+            class="h-9 px-3 border border-ink/25 text-ink font-cn text-xs inline-flex items-center gap-1.5 disabled:opacity-50"
+            :disabled="aiTesting" @click="testAi"
+          >
+            <PlugZap :size="12" /> {{ aiTesting ? '测试中…' : '测试连接' }}
+          </button>
+          <span v-if="aiTestResult" class="self-center font-cn text-[11px]" :class="aiTestResult === 'ok' ? 'text-celadonDeep' : 'text-cinnabar'">
+            {{ aiTestResult === 'ok' ? '连通' : '未连通' }}
+          </span>
+        </div>
+        <p class="font-cn text-[10px] text-inkLight leading-relaxed">
+          AI 建议默认关闭；开启后仅发送当日行程的地点名、类别与时刻至你填写的端点，不发送账号、坐标与账目明细。端点与 Key 只存本机。
+        </p>
+      </section>
+
       <!-- 数据 -->
       <section class="space-y-2 mt-4">
         <h3 class="font-cn text-[11px] text-inkLight tracking-widest border-b border-ink/10 pb-1.5">数据</h3>
@@ -167,7 +241,7 @@ function openKeyGuide() {
 
       <p class="flex items-start gap-1.5 font-cn text-[10px] text-inkLight/80 mt-4 pt-3 border-t border-ink/10 leading-relaxed">
         <Info :size="11" class="shrink-0 mt-0.5 text-ochre" />
-        所有偏好与数据仅存本机，拾程不上传、不追踪。清空前记得先导出一份 JSON。
+        {{ AI_ENABLED ? '开启 AI 后仅向你所填端点发送当日地点名与时刻。' : '所有偏好与数据仅存本机，拾程不上传、不追踪。' }}清空前记得先导出一份 JSON。
         <Check :size="11" class="inline align-text-bottom ml-1 text-celadonDeep" />
       </p>
 

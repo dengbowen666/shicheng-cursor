@@ -65,6 +65,8 @@ npm run icons      # 生成 PWA 印章 PNG（192 / 512）
 
 **Key 说明**：设置里填的腾讯 Key 只存 `localStorage`（`shicheng:key`），仅在浏览器端用于 WebService / GL 视觉层；status 199 会弹权限引导。生产环境请改用安全密钥或服务端代理，不要把正式 Key 硬编码进前端。
 
+**AI 建议（默认关闭，仅内网构建）**：`npm run build:lan` 会注入 `VITE_AI_ENABLED=1`，智能小助手才出现「请 AI 通盘看一眼」；公网 `npm run build` 不带此项，触发按钮与设置里的 AI 段整块不渲染（明文内网端点在 https 页面会被 mixed content 拦截）。开启后，点击时仅把当日地点名、类别、时刻与收藏池候选发往设置里填的 Dify 端点（`shicheng:aiBase` / `shicheng:aiKey`，只存本机），不发送账号、坐标与账目明细。AI 只提出一条受限动作建议（改交通方式 / 顺序 / 精简 / 补入 / 无），采用时走与手动操作完全相同的 store 方法，撤销栈与真实路线一并继承；请求失败或返回畸形时静默不显示卡片，不打断编辑。
+
 **本地存储键**：`shicheng:trips`、`shicheng:key`、`shicheng:weather`、`shicheng:hot`。清空数据需二次确认，并建议先导出 JSON。
 
 ---

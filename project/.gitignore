@@ -25,3 +25,7 @@ screenshots
 *.njsproj
 *.sln
 *.sw?
+
+dist_lan_v2/
+dist_lan_v3/
+dist-lan/
