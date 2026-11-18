@@ -5,7 +5,7 @@
 import { computed, nextTick, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import {
-  Plus, Search, X, MapPin, ArrowRight, RotateCcw,
+  Plus, Search, X, MapPin, ArrowRight, RotateCcw, Trash2, Archive,
   CalendarDays, Wallet, Settings2,
 } from 'lucide-vue-next'
 import ChinaInkMap from '../components/map/ChinaInkMap.vue'
@@ -20,6 +20,7 @@ import { useTripStore } from '../stores/trip'
 import { useCityStore } from '../stores/city'
 import { useWeatherStore } from '../stores/weather'
 import { useUiStore } from '../stores/ui'
+import { PROVINCE_SHORT } from '../data/cities'
 import type { City, Trip } from '../types'
 
 const router = useRouter()
@@ -92,6 +93,19 @@ function deleteCityTrip(id: string) {
   ui.toast('已删除此卷', '撤销', () => trip.undo())
   if (cityTripsList.value.length === 0) cityTripsCity.value = null
 }
+
+/** 清单删除：二次确认，避免误触；确认后走统一撤销栈 */
+const pendingDeleteId = ref<string | null>(null)
+function askDelete(id: string) { pendingDeleteId.value = pendingDeleteId.value === id ? null : id }
+function confirmDelete(id: string) {
+  pendingDeleteId.value = null
+  trip.deleteTrip(id)
+  ui.toast('已删除此卷', '撤销', () => trip.undo())
+}
+function archiveTripById(id: string, archived: boolean) {
+  trip.archiveTrip(id, archived)
+  ui.toast(archived ? '已归入行迹' : '已恢复为攻略', '撤销', () => trip.archiveTrip(id, !archived))
+}
 function openTrip(t: Trip) {
   trip.openTrip(t.id)
   router.push(`/trip/${t.id}`)
@@ -103,6 +117,9 @@ function onProvince(name: string) {
 function onMapBack() {
   focusProvince.value = null
   selectedCity.value = null
+}
+function shortProvince(name: string) {
+  return (PROVINCE_SHORT[name] || name.replace(/省|市|自治区|特别行政区/g, ''))
 }
 function onCityMarker(name: string) {
   if (mapMode.value === 'trail') {
@@ -375,14 +392,16 @@ onMounted(async () => {
         :trail-links="trailLinks"
         @select-province="onProvince"
         @select-city="onCityMarker"
-        @back="onMapBack"
       />
     </div>
 
-    <!-- 卷首左轴：题签 + 态铭 + 气韵 + 印谱 + 年次。与地图以竖墨线分界，填掉留白而非浮在纸上 -->
-    <div class="pointer-events-none absolute z-20 left-0 top-0 bottom-0 w-[130px] hidden md:flex flex-col items-stretch">
-      <!-- 与地图的分界线 -->
-      <span class="absolute right-0 top-6 bottom-6 w-px bg-gradient-to-b from-transparent via-ink/18 to-transparent" />
+    <!-- 卷首左轴：题签 + 态铭 + 气韵 + 印谱 + 年次。以渐隐纸色浮层覆盖在地图上，始终可见 -->
+    <div
+      class="pointer-events-none absolute z-20 left-0 top-0 bottom-0 w-[130px] hidden md:flex flex-col items-stretch bg-gradient-to-r transition-colors duration-300"
+      :class="focusProvince ? 'from-paper/95 via-paper/82 to-paper/40' : 'from-paper/85 via-paper/55 to-paper/10'"
+    >
+      <!-- 与地图的分界线：渐隐墨线，不与地图硬切 -->
+      <span class="absolute right-0 top-6 bottom-6 w-px bg-gradient-to-b from-transparent via-ink/16 to-transparent" />
       <span class="absolute right-[3px] top-10 bottom-10 w-px bg-gradient-to-b from-transparent via-ink/8 to-transparent" />
 
       <!-- 题签 -->
@@ -398,6 +417,19 @@ onMounted(async () => {
           class="font-brush text-xl tracking-[0.16em] leading-none"
           :class="mapMode === 'trail' ? 'text-celadonDeep' : 'text-cinnabar'"
         >{{ mapMode === 'trail' ? '行迹' : '印记' }}</span>
+      </div>
+
+      <!-- 省视图：当前省域 + 返九州，编排在左轴内 -->
+      <div v-if="focusProvince" class="mx-3 mb-4 flex flex-col items-center gap-2 pointer-events-auto">
+        <div class="w-full py-2 border border-cinnabar/25 bg-mist/60 flex flex-col items-center gap-1">
+          <span class="font-cn text-[8px] tracking-[0.3em] text-inkLight">省域</span>
+          <span class="font-brush text-lg text-cinnabarDeep leading-none">{{ shortProvince(focusProvince) }}</span>
+        </div>
+        <button
+          type="button"
+          class="w-full h-8 font-cn text-[11px] text-ink hover:text-cinnabar border border-ink/20 hover:border-cinnabar/50 inline-flex items-center justify-center gap-1 transition-colors"
+          @click="onMapBack"
+        >返 · 九州</button>
       </div>
 
       <!-- 气韵数字 -->
@@ -572,49 +604,83 @@ onMounted(async () => {
             <div v-show="!isCollapsed(year)" class="mt-2 space-y-2">
               <!-- 印记态：未行攻略大卡片 -->
               <template v-if="mapMode === 'mark'">
-                <button
+                <div
                   v-for="t in trips" :key="t.id"
-                  type="button"
-                  class="w-full paper-card text-left p-3 flex gap-3 group relative overflow-hidden"
+                  class="w-full paper-card p-3 flex gap-3 group relative overflow-hidden"
                   data-side-trip
-                  @click="openTrip(t)"
                 >
                   <span v-if="tripState(t) === '行中'" class="absolute left-0 top-0 bottom-0 w-1 bg-cinnabar" />
-                  <span class="seal w-10 h-10 text-[11px] shrink-0 flex-col leading-tight">
-                    <span>{{ t.sealText.slice(0, 1) }}</span>
-                    <span>{{ t.sealText.slice(1, 2) || '程' }}</span>
-                  </span>
-                  <span class="min-w-0 flex-1">
-                    <span class="flex items-center gap-2">
-                      <span class="font-brush text-base text-ink truncate">{{ t.title }}</span>
-                      <span v-if="tripState(t) === '行中'" class="font-cn text-[9px] text-cinnabar border border-cinnabar/40 px-1">进行中</span>
+                  <button type="button" class="contents" @click="openTrip(t)">
+                    <span class="seal w-10 h-10 text-[11px] shrink-0 flex-col leading-tight">
+                      <span>{{ t.sealText.slice(0, 1) }}</span>
+                      <span>{{ t.sealText.slice(1, 2) || '程' }}</span>
                     </span>
-                    <span class="mt-1 block font-cn text-[10px] text-inkLight flex flex-wrap items-center gap-x-3 gap-y-0.5">
-                      <span class="inline-flex items-center gap-1"><CalendarDays :size="10" />{{ dateText(t) }}</span>
-                      <span>{{ t.days.length }} 天 · {{ spots(t) }} 处</span>
-                      <span class="inline-flex items-center gap-1">
-                        <Wallet :size="10" />¥{{ (spent(t) / 100).toFixed(0) }}
-                        <template v-if="t.totalBudget"> / {{ (t.totalBudget / 100).toFixed(0) }}</template>
+                    <span class="min-w-0 flex-1 text-left">
+                      <span class="flex items-center gap-2">
+                        <span class="font-brush text-base text-ink truncate">{{ t.title }}</span>
+                        <span v-if="tripState(t) === '行中'" class="font-cn text-[9px] text-cinnabar border border-cinnabar/40 px-1">进行中</span>
+                      </span>
+                      <span class="mt-1 block font-cn text-[10px] text-inkLight flex flex-wrap items-center gap-x-3 gap-y-0.5">
+                        <span class="inline-flex items-center gap-1"><CalendarDays :size="10" />{{ dateText(t) }}</span>
+                        <span>{{ t.days.length }} 天 · {{ spots(t) }} 处</span>
+                        <span class="inline-flex items-center gap-1">
+                          <Wallet :size="10" />¥{{ (spent(t) / 100).toFixed(0) }}
+                          <template v-if="t.totalBudget"> / {{ (t.totalBudget / 100).toFixed(0) }}</template>
+                        </span>
                       </span>
                     </span>
-                  </span>
-                  <ArrowRight :size="15" class="text-inkLight/50 group-hover:text-cinnabar shrink-0 self-center" />
-                </button>
+                  </button>
+                  <!-- 操作组：归档 / 删除，悬浮才浮现；删除需二次确认 -->
+                  <div class="shrink-0 self-center flex flex-col gap-1 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
+                    <button
+                      type="button"
+                      class="w-7 h-7 flex items-center justify-center border border-transparent text-inkLight/55 hover:text-celadonDeep hover:border-celadon/50"
+                      title="归入行迹"
+                      @click="archiveTripById(t.id, true)"
+                    ><Archive :size="13" /></button>
+                    <button
+                      type="button"
+                      class="w-7 h-7 flex items-center justify-center border font-cn text-[9px] transition-colors"
+                      :class="pendingDeleteId === t.id
+                        ? 'bg-cinnabar text-mist border-cinnabar'
+                        : 'text-inkLight/55 border-transparent hover:text-cinnabar hover:border-cinnabar/40'"
+                      :title="pendingDeleteId === t.id ? '再点一次确认删除' : '删除此卷'"
+                      @click="pendingDeleteId === t.id ? confirmDelete(t.id) : askDelete(t.id)"
+                    >
+                      <template v-if="pendingDeleteId === t.id">确认</template>
+                      <Trash2 v-else :size="13" />
+                    </button>
+                  </div>
+                </div>
               </template>
 
               <!-- 行迹态：已行卷紧凑卡 + 恢复 -->
               <template v-else>
-                <div v-for="t in trips" :key="t.id" class="paper-card p-3 flex items-center gap-3" data-side-trip>
+                <div v-for="t in trips" :key="t.id" class="paper-card p-3 flex items-center gap-3 group" data-side-trip>
                   <span class="seal seal-muted w-9 h-9 text-[10px] shrink-0">{{ t.sealText.slice(0, 1) }}</span>
                   <button type="button" class="flex-1 min-w-0 text-left" @click="openTrip(t)">
                     <span class="block font-cn text-xs text-ink truncate">{{ t.title }}</span>
                     <span class="block font-cn text-[10px] text-inkLight">{{ dateText(t) }} · {{ spots(t) }} 处</span>
                   </button>
-                  <button
-                    type="button"
-                    class="font-cn text-[10px] text-celadonDeep border border-celadon px-1.5 py-0.5 shrink-0 hover:bg-celadon/10"
-                    @click="trip.archiveTrip(t.id, false); ui.toast('已恢复为攻略', '撤销', () => trip.archiveTrip(t.id, true))"
-                  >恢复</button>
+                  <div class="shrink-0 flex items-center gap-1 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
+                    <button
+                      type="button"
+                      class="font-cn text-[10px] text-celadonDeep border border-celadon px-1.5 py-0.5 hover:bg-celadon/10"
+                      @click="archiveTripById(t.id, false)"
+                    >恢复</button>
+                    <button
+                      type="button"
+                      class="w-6 h-6 flex items-center justify-center border font-cn text-[9px] transition-colors"
+                      :class="pendingDeleteId === t.id
+                        ? 'bg-cinnabar text-mist border-cinnabar'
+                        : 'text-inkLight/55 border-transparent hover:text-cinnabar hover:border-cinnabar/40'"
+                      :title="pendingDeleteId === t.id ? '再点一次确认删除' : '删除此卷'"
+                      @click="pendingDeleteId === t.id ? confirmDelete(t.id) : askDelete(t.id)"
+                    >
+                      <template v-if="pendingDeleteId === t.id">确认</template>
+                      <Trash2 v-else :size="12" />
+                    </button>
+                  </div>
                 </div>
               </template>
             </div>

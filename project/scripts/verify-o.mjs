@@ -58,8 +58,8 @@ await check('O01 城市可改+cities同步', async () => {
   // 城市浮层里的结果按钮：锁定含搜索框的浮层容器，再找「北京」候选
   const pop = page.locator('div.paper-card').filter({ has: page.locator('input[placeholder="搜城市，改这一天所在地"]') })
   const cand = pop.locator('button').filter({ hasText: '北京' }).first()
-  await cand.click({ timeout: 3000 })
-  await page.waitForTimeout(300)
+  await cand.click({ timeout: 3000, noWaitAfter: true })
+  await page.waitForTimeout(400)
   const trips = await readTrips()
   const t = trips.find(x => x.id === 'demo-dali-lijiang')
   const day0 = t?.days?.[0]?.city

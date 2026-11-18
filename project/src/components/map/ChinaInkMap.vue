@@ -37,7 +37,6 @@ const props = withDefaults(defineProps<{
 const emit = defineEmits<{
   (e: 'select-province', name: string): void
   (e: 'select-city', name: string): void
-  (e: 'back'): void
 }>()
 
 const C = {
@@ -141,10 +140,12 @@ const view = computed(() => {
   const p = provinces.find(pr => pr.name === props.focusProvince)
   if (!p) return base
   const bb = bboxOf(p.d)
-  const pad = Math.max(bb.w, bb.h) * 0.28
+  // 小省/直辖市给更大留白，并把缩放封顶：滤镜在极大 scale + 大位移下会失效变空白
+  const pad = Math.max(bb.w, bb.h) * 0.42
   const w = bb.w + pad * 2
   const h = bb.h + pad * 2
-  const s = Math.min(VB_W / w, VB_H / h) * 0.94
+  const raw = Math.min(VB_W / w, VB_H / h) * 0.92
+  const s = Math.min(raw, 5.2)
   const tx = VB_W / 2 - (bb.x + bb.w / 2) * s
   const ty = VB_H / 2 - (bb.y + bb.h / 2) * s
   return { tx, ty, s, str: `translate(${tx.toFixed(1)}px, ${ty.toFixed(1)}px) scale(${s.toFixed(3)})` }
@@ -175,7 +176,10 @@ function hashName(name: string) {
   return h
 }
 function provinceFill(name: string) {
-  if (props.focusProvince === name) return C.cinnabar
+  if (props.focusProvince) {
+    // 省视图：目标省淡朱砂晕染（不压住印章），其余统一纸色，彻底不随悬浮变色
+    return props.focusProvince === name ? '#E3B7A8' : PROVINCE_TINTS[hashName(name) % PROVINCE_TINTS.length]
+  }
   if (hovered.value === name) return C.cyanq
   return PROVINCE_TINTS[hashName(name) % PROVINCE_TINTS.length]
 }
@@ -405,11 +409,6 @@ function onCityClick(name: string, e: MouseEvent) {
   e.stopPropagation()
   emit('select-city', name)
 }
-function onBack() {
-  // 返九州：晕染从画面中心洇开，不跟按钮角落走
-  startWash({ x: 0.5, y: 0.45 })
-  emit('back')
-}
 </script>
 
 <template>
@@ -485,15 +484,16 @@ function onBack() {
               :key="p.adcode"
               :d="p.d"
               :fill="provinceFill(p.name)"
-              :fill-opacity="!focusProvince ? 1 : focusProvince === p.name ? 0.58 : hovered === p.name ? 0.36 : 0.16"
+              :fill-opacity="!focusProvince ? 1 : focusProvince === p.name ? 0.5 : 0.72"
               :stroke="focusProvince === p.name ? C.cinnabarDeep : '#4F4942'"
-              :stroke-width="(focusProvince === p.name ? 1.9 : 1.25) / view.s"
+              :stroke-opacity="!focusProvince ? 1 : focusProvince === p.name ? 0.9 : 0.32"
+              :stroke-width="(focusProvince === p.name ? 2.1 : 1.25) / view.s"
               stroke-linejoin="round"
               class="transition-all duration-300"
-              :class="focusProvince === p.name ? 'cursor-default' : 'cursor-pointer'"
-              :pointer-events="focusProvince === p.name ? 'none' : 'auto'"
-              @mouseenter="hovered = p.name"
-              @mouseleave="hovered = null"
+              :class="focusProvince ? 'cursor-default' : 'cursor-pointer'"
+              :pointer-events="focusProvince ? 'none' : 'auto'"
+              @mouseenter="!focusProvince && (hovered = p.name)"
+              @mouseleave="!focusProvince && (hovered = null)"
               @click="onProvincePath(p.name, $event)"
             >
               <title>{{ shortName(p.name) }}</title>
@@ -502,7 +502,7 @@ function onBack() {
         </g>
 
         <!-- D64 山脉：淡墨连续笔触 -->
-        <g fill="none" stroke="#A9B4B2" opacity="0.3" stroke-linecap="round" stroke-linejoin="round" pointer-events="none">
+        <g fill="none" stroke="#A9B4B2" :opacity="focusProvince ? 0.08 : 0.3" stroke-linecap="round" stroke-linejoin="round" pointer-events="none">
           <path
             v-for="(r, i) in rangePaths" :key="`range-${i}`"
             :d="r.d"
@@ -521,11 +521,12 @@ function onBack() {
             v-for="p in provinces"
             :key="'t' + p.adcode"
             :x="p.cx" :y="p.cy"
-            :font-size="12 * u"
-            :fill="hovered === p.name || focusProvince === p.name ? C.cinnabarDeep : '#5D574D'"
+            :font-size="(focusProvince === p.name ? 34 : 12) * u"
+            :fill="focusProvince ? C.cinnabarDeep : (hovered === p.name ? C.cinnabarDeep : '#5D574D')"
             text-anchor="middle"
-            :opacity="focusProvince && focusProvince !== p.name ? 0 : (hovered === p.name || focusProvince === p.name ? 1 : 0.84)"
-            :stroke="C.mist" :stroke-width="2.6 * u" paint-order="stroke" stroke-linejoin="round"
+            dominant-baseline="middle"
+            :opacity="focusProvince ? (focusProvince === p.name ? 0.3 : 0) : (hovered === p.name ? 1 : 0.84)"
+            :stroke="C.mist" :stroke-width="(focusProvince === p.name ? 4.5 : 2.6) * u" paint-order="stroke" stroke-linejoin="round"
           >{{ shortName(p.name) }}</text>
         </g>
 
@@ -667,16 +668,20 @@ function onBack() {
       @done="onWashDone"
     />
 
-    <div v-if="focusProvince" class="absolute z-20 left-3 bottom-4 md:left-5 md:bottom-6 flex flex-col items-start gap-2">
-      <button
-        type="button"
-        class="h-9 px-3 paper-card font-cn text-[12px] text-ink hover:text-cinnabar inline-flex items-center gap-1.5"
-        @click.stop="onBack"
-      >返 · 九州</button>
-      <p class="font-cn text-[10px] text-inkLight/90 tracking-wider pl-0.5">
-        {{ shortName(focusProvince) }} · {{ citiesByProvince(focusProvince).length }} 城可入 · 点印入城
-      </p>
+    <!-- 省视图题头：大字省名匾额，让"当前在哪个省"一眼可见 -->
+    <div v-if="focusProvince" class="pointer-events-none absolute z-20 inset-x-0 top-5 flex flex-col items-center gap-1.5">
+      <div class="flex items-center gap-2.5 px-5 py-2 paper-card">
+        <span class="seal w-8 h-8 text-[12px] shrink-0 flex-col leading-none seal-stamp">
+          <span>{{ shortName(focusProvince).slice(0, 1) }}</span>
+          <span>{{ shortName(focusProvince).slice(1, 2) || '省' }}</span>
+        </span>
+        <div class="flex flex-col items-start">
+          <span class="font-brush text-[26px] leading-none text-cinnabarDeep tracking-[0.14em]">{{ shortName(focusProvince) }}</span>
+          <span class="font-cn text-[9px] text-inkLight tracking-[0.2em] mt-1">省域卷 · {{ citiesByProvince(focusProvince).length }} 城可入 · 点印入城</span>
+        </div>
+      </div>
     </div>
+
   </div>
 </template>
 

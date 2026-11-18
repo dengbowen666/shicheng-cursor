@@ -173,9 +173,14 @@ export const useTripStore = defineStore('trip', () => {
   function undo(): string | null {
     const entry = undoStack.value.pop()
     if (!entry) return null
+    const restored = normalizeTrip(JSON.parse(entry.snapshot))
     const idx = trips.value.findIndex(t => t.id === entry.tripId)
-    if (idx < 0) return null
-    trips.value[idx] = normalizeTrip(JSON.parse(entry.snapshot))
+    if (idx < 0) {
+      // 该卷已被删除（或撤销链上更早的删除）：把快照整卷放回，删除才可撤销
+      trips.value.push(restored)
+    } else {
+      trips.value[idx] = restored
+    }
     // 撤销对象不是当前攻略时切过去，否则用户看不到任何变化
     if (activeTripId.value !== entry.tripId) activeTripId.value = entry.tripId
     return `已撤销：${entry.label}`
