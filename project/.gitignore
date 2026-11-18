@@ -12,6 +12,9 @@ dist
 dist-ssr
 *.local
 
+# 验收脚本产出的临时截图（约 7MB/批）；正式验收证据仍放 shots/
+screenshots
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
