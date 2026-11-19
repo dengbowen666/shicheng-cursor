@@ -8,6 +8,7 @@ import type { LngLat } from '../../types'
 import type { MapBounds } from '../../lib/projection'
 import { boundsFromCorners } from '../../lib/projection'
 import { applyInkStyle, loadTMap } from '../../lib/tmap'
+import type { PoiLayerVisibility } from '../../lib/tmap'
 
 const props = defineProps<{
   mapKey: string
@@ -17,6 +18,8 @@ const props = defineProps<{
   standard?: boolean
   /** true=把拖拽/缩放交还腾讯 GL 原生（GPU 合成、跟手、松手无回弹）；水墨底图为 false */
   interactive?: boolean
+  /** 景/食/宿图层开关：同步隐藏底图原生 POI，与自有印章一致 */
+  layers?: PoiLayerVisibility
 }>()
 
 const emit = defineEmits<{
@@ -196,7 +199,7 @@ onMounted(async () => {
         features: ['base', 'road', 'building', 'point'],
       },
     })
-    applyInkStyle(map, !!props.standard)
+    applyInkStyle(map, !!props.standard, props.layers)
     let bound = false
     try {
       map.on('idle', () => { onTileSignal(); publishView() })
@@ -271,6 +274,10 @@ watch(() => [props.bounds.minLng, props.bounds.maxLng, props.bounds.minLat, prop
 watch(() => [props.width, props.height], () => {
   try { map?.resize?.() } catch { /* ignore */ }
   schedule()
+})
+// 图层开关切换：只重刷样式（不重建地图、不重置视野），原生 POI 显隐即时生效
+watch(() => [props.layers?.sight, props.layers?.food, props.layers?.hotel, props.standard], () => {
+  if (map && !dead) applyInkStyle(map, !!props.standard, props.layers)
 })
 </script>
 

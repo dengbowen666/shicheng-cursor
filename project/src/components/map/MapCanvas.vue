@@ -17,6 +17,7 @@ import LegLayer from './LegLayer.vue'
 import InkMarker from './InkMarker.vue'
 import WeatherBadge from './WeatherBadge.vue'
 import AnnotateLayer from './AnnotateLayer.vue'
+import LayerSeals from '../layout/LayerSeals.vue'
 
 type Pt = { x: number; y: number }
 
@@ -619,6 +620,7 @@ defineExpose({ undoAnnotation, clearAnnotations, loadPersisted, focusOn, focusPo
       :height="stageSize.h"
       :standard="standardBase"
       :interactive="!annotateMode"
+      :layers="props.layers"
       @ready="glReady = true"
       @fail="onGlFail"
       @view="onGlView"
@@ -697,17 +699,23 @@ defineExpose({ undoAnnotation, clearAnnotations, loadPersisted, focusOn, focusPo
 
     <div
       v-if="!annotateMode"
-      class="absolute right-3 top-16 z-20 flex flex-col overflow-hidden border border-ink/15 bg-mist/90 shadow-paper"
+      class="absolute right-3 top-16 z-20 flex flex-col items-center gap-2"
     >
-      <button type="button" class="w-9 h-9 font-cn text-lg text-ink hover:text-cinnabar" title="放大" @click.stop="zoomBy(1.25)">+</button>
-      <button type="button" class="w-9 h-9 font-cn text-lg text-ink hover:text-cinnabar border-t border-ink/10" title="缩小" @click.stop="zoomBy(0.8)">−</button>
-      <button
-        v-if="camScale !== 1 || camCenter"
-        type="button"
-        class="w-9 h-9 font-cn text-[10px] text-cinnabar border-t border-ink/10"
-        title="复位视野"
-        @click.stop="resetCam"
-      >复</button>
+      <div class="flex flex-col overflow-hidden border border-ink/15 bg-mist/90 shadow-paper">
+        <button type="button" class="w-9 h-9 font-cn text-lg text-ink hover:text-cinnabar" title="放大" @click.stop="zoomBy(1.25)">+</button>
+        <button type="button" class="w-9 h-9 font-cn text-lg text-ink hover:text-cinnabar border-t border-ink/10" title="缩小" @click.stop="zoomBy(0.8)">−</button>
+        <button
+          v-if="camScale !== 1 || camCenter"
+          type="button"
+          class="w-9 h-9 font-cn text-[10px] text-cinnabar border-t border-ink/10"
+          title="复位视野"
+          @click.stop="resetCam"
+        >复</button>
+      </div>
+      <!-- 图层篆印：景/食/宿，同时控制自有印章与底图原生 POI（唯一一组） -->
+      <div class="pointer-events-auto border border-ink/15 bg-mist/90 shadow-paper px-1.5 py-1.5">
+        <LayerSeals />
+      </div>
     </div>
 
     <div v-if="visiblePois.length === 0 && visibleRecs.length === 0 && !annotateMode" class="pointer-events-none absolute inset-0 flex items-center justify-center px-6">

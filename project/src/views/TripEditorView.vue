@@ -4,12 +4,11 @@ import { useRoute, useRouter } from 'vue-router'
 import {
   Archive, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, Download, Eye, Heart, ListChecks,
   Map as MapIcon, PenLine, Play, ReceiptText, Route as RouteIcon, Settings2,
-  Sparkles, SunMedium, Trash2, Undo2, Utensils, BedDouble, Landmark, X,
+  Sparkles, SunMedium, Trash2, Undo2, X,
 } from 'lucide-vue-next'
 import AppHeader from '../components/layout/AppHeader.vue'
 import DayRail from '../components/layout/DayRail.vue'
 import FabGroup from '../components/layout/FabGroup.vue'
-import LayerSeals from '../components/layout/LayerSeals.vue'
 import MapCanvas from '../components/map/MapCanvas.vue'
 import PoiSearch from '../components/editor/PoiSearch.vue'
 import DayPanel from '../components/editor/DayPanel.vue'
@@ -350,15 +349,6 @@ function openMapDrawer(kind: 'itinerary' | 'expense' | 'today' | 'wishlist') {
             <button class="map-action" :class="ui.viewMode === 'all' ? 'is-active' : ''" @click="ui.viewMode = ui.viewMode === 'day' ? 'all' : 'day'">
               <MapIcon :size="13" /> {{ ui.viewMode === 'day' ? '全程全览' : '聚焦当日' }}
             </button>
-            <button class="map-action" :class="ui.layers.sight ? 'is-active' : ''" title="景点层" @click="ui.toggleLayer('sight')">
-              <Landmark :size="13" /> 景
-            </button>
-            <button class="map-action" :class="ui.layers.food ? 'is-active' : ''" title="美食层" @click="ui.toggleLayer('food')">
-              <Utensils :size="13" /> 食
-            </button>
-            <button class="map-action" :class="ui.layers.hotel ? 'is-active' : ''" title="住宿层" @click="ui.toggleLayer('hotel')">
-              <BedDouble :size="13" /> 宿
-            </button>
             <button class="map-action" :class="ui.drawer === 'itinerary' ? 'is-active' : ''" @click="openMapDrawer('itinerary')">
               <ListChecks :size="13" /> 时间轴
             </button>
@@ -413,15 +403,12 @@ function openMapDrawer(kind: 'itinerary' | 'expense' | 'today' | 'wishlist') {
             <span class="vertical-text font-cn text-[8px] tracking-[0.35em] text-inkLight/70">实地舆图</span>
           </div>
 
-          <!-- 图例 + 图层篆印 -->
-          <div class="hidden lg:flex pointer-events-none absolute left-4 bottom-10 z-10 items-end gap-4">
+          <!-- 图例（图层篆印已并入地图右侧缩放控件下方） -->
+          <div class="hidden lg:flex pointer-events-none absolute left-4 bottom-10 z-10 items-end">
             <div class="flex items-center gap-3 font-cn text-[9px] tracking-wider text-inkLight/80">
               <span class="inline-flex items-center gap-1"><i class="w-1.5 h-1.5 bg-cinnabar"></i>景点</span>
               <span class="inline-flex items-center gap-1"><i class="w-1.5 h-1.5 bg-ochreDeep"></i>食宿</span>
               <span class="inline-flex items-center gap-1"><i class="w-1.5 h-1.5 bg-celadonDeep"></i>路线</span>
-            </div>
-            <div class="pointer-events-auto">
-              <LayerSeals />
             </div>
           </div>
 
@@ -437,9 +424,6 @@ function openMapDrawer(kind: 'itinerary' | 'expense' | 'today' | 'wishlist') {
 
           <!-- 移动端动作钮，落在地图舞台内，不会压住底部抽屉 -->
           <FabGroup class="lg:hidden" :trip-id="activeTrip.id" />
-          <div class="lg:hidden absolute left-3 bottom-4 z-20 pointer-events-auto">
-            <LayerSeals />
-          </div>
         </div>
 
         <!-- 移动端底部抽屉：参与 flex 布局，地图自动让位 -->

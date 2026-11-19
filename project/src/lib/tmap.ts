@@ -33,13 +33,44 @@ export function loadTMap(key: string): Promise<any> {
   return loaderPromise
 }
 
+export interface PoiLayerVisibility { sight: boolean; food: boolean; hotel: boolean }
+
+/**
+ * 图层篆印（景/食/宿）对底图原生 POI 的显隐规则。
+ * 腾讯 GL 样式支持按 POI 子类设 visibility，多个候选类名提高命中率；
+ * 未命中某一类也不会报错，仅那一类仍照常显示（自有印章的过滤始终生效）。
+ */
+const POI_LAYER_FEATURES: Array<[keyof PoiLayerVisibility, string[]]> = [
+  ['sight', ['poi.attraction', 'poi.scenic', 'poi.tourism']],
+  ['food', ['poi.catering', 'poi.food', 'poi.restaurant']],
+  ['hotel', ['poi.hotel', 'poi.lodging']],
+]
+
+function poiVisibilityMix(layers?: PoiLayerVisibility): any[] {
+  if (!layers) return []
+  const rules: any[] = []
+  for (const [key, features] of POI_LAYER_FEATURES) {
+    if (layers[key]) continue
+    for (const featureType of features) rules.push({ featureType, stylers: { visibility: 'off' } })
+  }
+  return rules
+}
+
 /** 宋韵水墨样式；standard=true 时切回标准底图，避免可读性损失（D09） */
-export function applyInkStyle(map: any, standard = false) {
+export function applyInkStyle(map: any, standard = false, layers?: PoiLayerVisibility) {
   if (!map) return
+  const visMix = poiVisibilityMix(layers)
   try {
     if (standard) {
-      map.setMapStyleId?.('style0')
-      map.setStyle?.('normal')
+      // 标准档：无过滤时走内置主题；有过滤时套一份只改 POI 显隐、底色仍为 normal 的样式
+      if (!visMix.length) {
+        map.setMapStyleId?.('style0')
+        map.setStyle?.('normal')
+        return
+      }
+      const base = map.getStyles?.() || []
+      map.setStyles?.([{ id: 'shicheng-std-filter', name: '标准·图层过滤', base: 'normal', mix: visMix }, ...base])
+      map.setStyle?.('shicheng-std-filter')
       return
     }
     // 优先走自定义 mix（若 SDK 支持）；失败则靠 CSS 纸色罩层兜底
@@ -62,9 +93,11 @@ export function applyInkStyle(map: any, standard = false) {
       { featureType: 'green', elementType: 'geometry', stylers: { color: '#D5DED4' } },
       { featureType: 'landscape', elementType: 'geometry', stylers: { color: '#E6EADF' } },
       { featureType: 'administrative', elementType: 'labels.text.fill', stylers: { color: '#7A7468' } },
+      // 图层篆印关掉的类别，底图原生 POI 一并隐藏（与自有印章一致）
+      ...visMix,
     ]
     if (typeof map.setStyles === 'function') {
-      const base = map.getStyles?.() || []
+      const base = (map.getStyles?.() || []).filter((s: any) => s?.id !== styleId)
       map.setStyles([{ id: styleId, name: '宋韵水墨', base: 'normal', mix: inkMix }, ...base])
       map.setStyle?.(styleId)
     } else if (typeof map.setMapStyle === 'function') {
