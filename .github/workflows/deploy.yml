@@ -1,0 +1,62 @@
+name: 部署拾程到 GitHub Pages
+
+# 个人自用：push 到 main 即自动构建并发布；也可在 Actions 页手动触发
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+# 允许 GITHUB_TOKEN 写入 Pages 与 OIDC 鉴权
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# 同一时刻只允许一次 Pages 部署，排队不取消
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+
+      - name: 安装 Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: project/package-lock.json
+
+      - name: 安装依赖
+        working-directory: project
+        run: npm ci
+
+      - name: 类型检查与构建
+        working-directory: project
+        env:
+          # 新 Key 只在 GitHub Secrets 里保存，构建期注入产物；源码与仓库历史不落地明文
+          VITE_TMAP_KEY: ${{ secrets.VITE_TMAP_KEY }}
+        run: npm run build
+
+      - name: 配置 Pages
+        uses: actions/configure-pages@v5
+
+      - name: 上传构建产物
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: project/dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: 发布到 GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
