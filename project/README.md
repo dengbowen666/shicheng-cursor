@@ -52,7 +52,7 @@ npm run icons      # 生成 PWA 印章 PNG（192 / 512）
 | 今天与忆游 | 行前锦囊 / 该出发了 / 已至盖章三态；归档后可看印章分布、花费曲线、题跋集；回放已重做 |
 | 行迹 | 首页「印记 · 行迹」分离；旧游落「行」印 / 零章虚边印；卷内跨城虚线；该城行迹小卷进忆游 |
 | 导出三件套 | 国风长卷 PNG（自绘 canvas）、离线打印 HTML、JSON 备份 / 恢复 |
-| PWA | 手写 `manifest.json` + `sw.js`，Vite `base: './'` + hash 路由，可直接静态托管 |
+| PWA | 手写 `manifest.json` + `sw.js`（HTML network-first、资源 stale-while-revalidate），Vite `base: './'` + hash 路由，可直接静态托管 |
 
 ---
 
@@ -135,7 +135,25 @@ shots/               v4-01 ~ v4-12 验收截图 + acceptance.json
 
 ---
 
-## 八、已知边界
+## 八、部署到 GitHub Pages（个人自用）
+
+仓库根已配好 `.github/workflows/deploy.yml`：**push 到 `main` 即自动构建并发布**，访问地址 `https://<用户名>.github.io/<仓库名>/`。站点在仓库子路径下也能正常工作——Vite `base: './'` + hash 路由 + `manifest/sw` 全用相对路径，无需改配置。
+
+上线前三步（一次性）：
+
+1. **换 Key 并配白名单**：旧 Key 已在公开仓库历史中，应作废。到腾讯位置服务控制台新建 Key，配置 Referer 域名白名单为你的 Pages 域名（如 `dengbowen666.github.io`），并设每日配额上限。
+2. **存 Secret**：仓库 → Settings → Secrets and variables → Actions → New repository secret，名称 `VITE_TMAP_KEY`，值为新 Key。构建期由 Actions 注入产物，**源码与 Git 历史不留明文**；Secret 缺失时工作流会直接报错，不会产出无 Key 的成品。
+3. **开启 Pages**：仓库 → Settings → Pages → Build and deployment → Source 选 **GitHub Actions**。然后 `git push origin main`，在 Actions 页看流水线跑绿即可。
+
+访问注意：
+
+- 必须用**新 Key 所在域名**访问；本地开发仍可继续用 `.env` 的 Key（`npm run dev` 不受影响）。
+- 每次发布后，Service Worker 对 HTML 走 network-first，回访会立刻拿到新版本，不会因缓存停在旧界面。
+- 部署产物由 Actions 现场构建，`dist/` 本身被 `.gitignore` 忽略，不需要手动上传。
+
+---
+
+## 九、已知边界
 
 - 有 Key 时交通段走真实路线规划（真实距离 / 耗时 / 折线 / 公交票价），失败或无 Key 才退回「直线 × 经验速度」估算，并在界面标朱砂「估」。
 - 打车费用服务端不返回，仍按 2.4 元/公里估算；公交票价取接口返回的票价。

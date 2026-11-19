@@ -35,6 +35,16 @@ jobs:
         working-directory: project
         run: npm ci
 
+      - name: 校验地图 Key 已配置
+        env:
+          TMAP_KEY: ${{ secrets.VITE_TMAP_KEY }}
+        run: |
+          if [ -z "$TMAP_KEY" ]; then
+            echo "::error::未配置 Secrets VITE_TMAP_KEY，产物将无地图 Key。请先在 仓库设置 → Secrets and variables → Actions 添加该 Secret。"
+            exit 1
+          fi
+          echo "地图 Key 已注入（长度 ${#TMAP_KEY}）"
+
       - name: 类型检查与构建
         working-directory: project
         env:
