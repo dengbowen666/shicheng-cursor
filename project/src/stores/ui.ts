@@ -7,11 +7,27 @@ export type BaseMapKind = 'paper' | 'standard'
 export type ModalKind = 'settings' | 'keyGuide' | 'export' | 'route' | 'place' | 'customPoi' | 'segment' | 'leg' | null
 
 const KEY_STORAGE = 'shicheng:key'
+const KEY_SOURCE_STORAGE = 'shicheng:keySource' // 'user' = 用户在设置面板手填；缺省 = 构建期注入/历史残留
 const SETTINGS_STORAGE = 'shicheng:settings'
 const DISMISSED_STORAGE = 'shicheng:dismissed'
 
-/** 构建期注入的默认 Key（.env 的 VITE_TMAP_KEY）；设置面板里填的会覆盖它 */
+/** 构建期注入的默认 Key（部署时为 GitHub Secrets 注入的新 Key；本地为 .env）。它是权威来源 */
 const DEFAULT_KEY = (import.meta.env.VITE_TMAP_KEY as string | undefined)?.trim() || ''
+
+/**
+ * 解析启动时生效的 Key：
+ * - 用户在设置面板手填的 Key（有 'user' 标记）始终优先，尊重本机手动覆盖；
+ * - 否则一律用构建期注入的 DEFAULT_KEY——这样重新部署/换 Secret Key 时，
+ *   会自动替换掉历史残留的旧 Key（旧 Key 失效会让真实底图整片加载不出来，只剩水墨降级层）。
+ * - 无 DEFAULT_KEY（本地未配 .env）时才回落到历史残留，兼容老数据。
+ */
+function resolveInitialKey(): string {
+  const stored = localStorage.getItem(KEY_STORAGE) || ''
+  const source = localStorage.getItem(KEY_SOURCE_STORAGE)
+  if (stored && source === 'user') return stored
+  if (DEFAULT_KEY) return DEFAULT_KEY
+  return stored
+}
 
 export interface ToastItem { id: number; text: string; action?: string; onAction?: () => void }
 
@@ -30,7 +46,7 @@ export const useUiStore = defineStore('ui', () => {
   const modalPayload = ref<any>(null)
   const annotateMode = ref(false)
   const replaying = ref(false)
-  const mapKey = ref<string>(localStorage.getItem(KEY_STORAGE) || DEFAULT_KEY)
+  const mapKey = ref<string>(resolveInitialKey())
   const isDemo = ref(true)
   const toasts = ref<ToastItem[]>([])
   const settings = ref<{ standardMap: boolean; baseMap: BaseMapKind }>({ standardMap: false, baseMap: 'paper' })
@@ -78,7 +94,22 @@ export const useUiStore = defineStore('ui', () => {
   const isMobile = computed(() => typeof window !== 'undefined' && window.innerWidth < 768)
 
   function setKey(key: string) {
-    mapKey.value = key.trim()
+    const next = key.trim()
+    mapKey.value = next
+    // 空值视为「恢复构建默认」：清掉用户标记，让 DEFAULT_KEY 在下一次解析时生效
+    if (!next) {
+      localStorage.removeItem(KEY_SOURCE_STORAGE)
+      if (DEFAULT_KEY) mapKey.value = DEFAULT_KEY
+    } else {
+      localStorage.setItem(KEY_SOURCE_STORAGE, 'user')
+    }
+  }
+  /** 是否有构建期注入的 Key（设置面板据此显示「恢复默认」入口） */
+  const hasBuildKey = computed(() => !!DEFAULT_KEY)
+  /** 恢复使用构建期注入的默认 Key，清掉本机手填/残留 */
+  function resetKey() {
+    localStorage.removeItem(KEY_SOURCE_STORAGE)
+    mapKey.value = DEFAULT_KEY
   }
   function openDrawer(kind: DrawerKind) {
     drawer.value = kind
@@ -119,9 +150,9 @@ export const useUiStore = defineStore('ui', () => {
 
   return {
     activeDayIndex, viewMode, layers, drawer, selectedPoiId, selectedSegmentId,
-    sheet, studioCollapsed, inspectorCollapsed, modal, modalPayload, annotateMode, replaying, mapKey, isDemo, toasts, settings, isMobile,
+    sheet, studioCollapsed, inspectorCollapsed, modal, modalPayload, annotateMode, replaying, mapKey, isDemo, toasts, settings, isMobile, hasBuildKey,
     dismissedByTrip, isDismissed, dismissKey,
-    setKey, openDrawer, closeDrawer, toggleLayer, openModal, closeModal, clearSelection, toast, dismiss, runToastAction,
+    setKey, resetKey, openDrawer, closeDrawer, toggleLayer, openModal, closeModal, clearSelection, toast, dismiss, runToastAction,
     notifyKeyGuide,
   }
 })

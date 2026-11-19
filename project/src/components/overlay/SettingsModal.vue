@@ -25,7 +25,12 @@ watch(() => ui.mapKey, v => { draftKey.value = v })
 
 function saveKey() {
   ui.setKey(draftKey.value)
-  ui.toast(draftKey.value ? '地图 Key 已保存，实时能力已启用' : '已清除 Key，仍可使用内置数据')
+  ui.toast(draftKey.value ? '地图 Key 已保存，实时能力已启用' : (ui.hasBuildKey ? '已恢复部署默认的地图 Key' : '已清除 Key，仍可使用内置数据'))
+}
+
+function restoreBuildKey() {
+  ui.resetKey()
+  ui.toast('已恢复部署默认的地图 Key')
 }
 
 const BASE_MAP_OPTIONS: { key: BaseMapKind; label: string; hint: string }[] = [
@@ -162,6 +167,10 @@ async function testAi() {
           </div>
           <p class="font-cn text-[10px] text-inkLight mt-1.5 leading-relaxed">
             Key 只保存在此浏览器，用于实时地点搜索、路线与导航 referer；不填也不影响离线行程、题跋与记账。
+          </p>
+          <p v-if="ui.hasBuildKey" class="font-cn text-[10px] text-inkLight/80 mt-1 leading-relaxed">
+            本站点已内置部署 Key。若地图只剩水墨底图、真实路网加载不出来，多为旧 Key 残留——点右侧「恢复默认」即可换回内置 Key。
+            <button class="ml-1 underline decoration-dotted text-celadonDeep hover:text-cinnabar" @click="restoreBuildKey">恢复默认</button>
           </p>
         </div>
 
