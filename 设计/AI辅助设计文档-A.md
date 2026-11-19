@@ -1,8 +1,8 @@
 # 拾程 · AI 辅助设计文档（A 系列）
 
-> 版本：**v0.2（大幅收窄）**　日期：2026-11-18　适用：shicheng v4.7.1
+> 版本：**v0.2（大幅收窄）**　日期：2026-11-18　适用：shicheng v4.8.2
 > 定位：D 系列管"长什么样"，O 系列管"自己用顺不顺"，L 系列管"数据怎么建模"，**A 系列管"大模型怎么接进来"**。
-> 状态：**待落地，未改任何源码。**
+> 状态：**已落地（v4.8.0，`cd53fad`）**——第五张 AI 卡、内网双构建、验收脚本全部完成。本文保留原始方案作为设计依据，实际实现与偏差见文末 §10。
 
 ---
 
@@ -218,21 +218,22 @@ function parseAdvice(raw: string): AdviceAction | null {
 
 ```
 新增
-  src/lib/ai.ts                    接入层（约 100 行）
+  src/lib/ai.ts                    接入层（约 240 行，含缓存/超时/解析/校验/取消）
   .env.lan                         VITE_AI_ENABLED=1
   scripts/verify-ai.mjs            验收脚本
 
 改动
-  src/stores/ui.ts                 aiBase / aiKey / setAi（照 mapKey 范式）
   src/components/overlay/SettingsModal.vue
                                    AI 段：端点、Key、「测试连接」
   src/components/editor/SmartAssist.vue
                                    第五张卡 + 底部触发按钮 + 去重逻辑
+  src/views/TripEditorView.vue     智能助手面板限高 188px → 240px
   package.json                     build:lan
   README.md                        隐私口径 + AI 开关说明
+  .gitignore                       忽略 dist_lan_* 临时产物
 ```
 
-**不改动**：`types/index.ts`、`trip.ts`、`export.ts`、任何地图 / 面板 / 抽屉组件。
+**不改动**：`types/index.ts`、`trip.ts`、`export.ts`、`ui.ts`、任何地图 / 面板 / 抽屉组件。**实施偏差**：AI 的存储读写（`aiBase()` / `aiKey()` / `setAi()`）最终放在 `src/lib/ai.ts` 内自理，而非原计划写进 `ui.ts`（§4.1 的存储键不变）；这样 `ui.ts` 零改动、AI 逻辑内聚，设置面板直接从 `lib/ai` 导入。
 
 ### 5.1 部署上的那条硬限制仍然成立
 
@@ -300,10 +301,30 @@ function parseAdvice(raw: string): AdviceAction | null {
 
 ---
 
-## 9. 待你确认
+## 9. 原待确认项（已随落地收口）
 
-1. 是否就做这一张卡；`reorder`（整日重排）作为可选动作，还是先只做 `mode` / `trim` / `fill` 三种单目标动作，`reorder` 留到下一版？
-2. 触发按钮文案：「请 AI 通盘看一眼」是否合你口味（可换）。
-3. 智能助手面板当前在桌面左栏限高 `max-h-[188px]`（`TripEditorView.vue:250`），加一张卡后会更快触底滚动。是否顺带放开到 `240px`？
+1. 动作范围：**五种全做**（`mode` / `reorder` / `trim` / `fill` / `none`）——用户授权"最优最符合直觉就怎么做"，整日重排一并纳入白名单。
+2. 触发按钮文案：沿用「请 AI 通盘看一眼」，未改。
+3. 智能助手面板限高：**已放开到 `max-h-[240px]`**（`TripEditorView.vue:336`），加卡后可滚动不被截断。
 
-> 本文档仅为设计稿，未修改任何源码。
+---
+
+## 10. 落地记录（v4.8.0，本节优先于上文）
+
+**已完成**：A v0.2 的全部设计范围，提交 `cd53fad`。第五张 AI 卡、手动触发、白名单动作、复用 store 方法、按天忽略持久化、命中缓存、畸形整条丢弃、公网不渲染——均按文档实现。
+
+### 10.1 实施偏差（以本节为准）
+| # | 设计稿 | 实际实现 | 原因 |
+|---|---|---|---|
+| 1 | `ui.ts` 提供 `aiBase/aiKey/setAi` | 移到 `src/lib/ai.ts` 自理（`aiBase()`/`aiKey()`/`setAi()` / 存储键 `shicheng:aiBase`、`shicheng:aiKey` 不变） | `ui.ts` 零改动、AI 逻辑内聚；设置面板改从 `lib/ai` 导入 |
+| 2 | `ai.ts` 约 100 行 | 约 240 行 | 实测需要缓存读写、fingerprint 哈希、15s 超时 + `AbortController` 取消、JSON 包裹剥离与白名单校验，故比初估长 |
+| 3 | §9.3 面板限高 188px 待定 | 已改 240px | 见 §9 收口 |
+| 4 | 去重"检查成本约 5 行" | 实现于 `SmartAssist` 的 AI 卡可见性计算（`aiVisible`）中 | 与忽略态、就绪态合并判断 |
+
+### 10.2 验收结果
+- `scripts/verify-ai.mjs`：公网构建 **2/2**（无触发按钮、设置无 AI 段）；内网构建 **6/6**（端点为空不渲染、`mode` 正常路径、采用后单次撤销即回退、不破坏真实路线、畸形返回整条丢弃、越权动作被拒）。
+- `typecheck` / `build` 通过；全回归无退化（见体验优化文档 §6 脚本清单）。
+- 注：验收用 `page.route` 拦截 `chat-messages` 返回固定 fixture，不依赖真实 Dify；真实端点连通性靠设置面板「测试连接」确认。
+
+### 10.3 仍成立的硬限制
+公网 https 连明文内网端点被 mixed content 拦截（§5.1 / 主文档 D101），**无解、非配置问题**：公网构建整块不渲染入口。若日后要公网可用，需服务端代理或 https 端点——超出当前自用边界。

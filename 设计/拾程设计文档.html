@@ -276,7 +276,7 @@ table.table td.dno, table.table th.dno { text-align: center; font-weight: 700; c
 <section class="title">
   <h1>拾程 · 国风旅行地图攻略编辑器<span class="seal">拾程</span></h1>
   <div class="accent-line"></div>
-  <p>设计文档 · v4.7（v4 定案 + D54–D91 体验动效 + D92–D99 体验收口）<br>
+  <p>设计文档 · v4.8.2（v4 定案 + D54–D91 体验动效 + D92–D99 体验收口 + D100–D108 自用体验根治）<br>
   搜全国任一城市 · 自编辑做攻略 · 打车小车与步行脚印上地图 · 宋韵雅致国风<br>
   Vue 3 + Pinia + 腾讯地图 · 高保真交互原型 · 仅自用 · EdgeOne Pages 部署</p>
 </section>
@@ -284,20 +284,20 @@ table.table td.dno, table.table th.dno { text-align: center; font-weight: 700; c
 <!-- ===== 文档信息 ===== -->
 <h1 class="heading" id="sec-0">零 · 文档信息与阅读指引</h1>
 <div class="doc-section">
-  <p class="paragraph noindent"><span class="badge">状态</span> 需求与设计已收口，<b>主链路已落地（v4.6）</b>，剩余见附录 12.5。本文档由 2026-11-17 与用户的多轮需求讨论固化而成，是「拾程」项目的<b>唯一设计基准</b>：后续开发中若与本记忆冲突，以本文档为准；若需变更，先改文档再改代码（D90）。</p>
+  <p class="paragraph noindent"><span class="badge">状态</span> 需求与设计已收口，<b>主链路已落地（v4.8.2）</b>，剩余见附录 12.5。本文档由 2026-11-17 与用户的多轮需求讨论固化而成，是「拾程」项目的<b>唯一设计基准</b>：后续开发中若与本记忆冲突，以本文档为准；若需变更，先改文档再改代码（D90）。v4.7 之后的四批自用体验根治（AI 辅助 L/A、卷首左轴与列表、城市地图原生拖拽与原生 POI 详情）见第二章表 M（D100–D108）与配套专题文档 L / A / O 系列。</p>
   <table class="table" data-caption="文档信息">
     <colgroup><col style="width:16%"><col style="width:44%"><col style="width:40%"></colgroup>
     <thead><tr><th>字段</th><th>内容</th><th>说明</th></tr></thead>
     <tbody>
-      <tr><td>版本</td><td>v4.7（v4.6 之上完成体验收口 D92–D99：入城向导预选、移动 Tab 五枚、色板回写实现值、花费曲线自绘 SVG、FAB 桌面补位、原生控件纸面化、批注持久化修复、城市库与数字字体定案；演革见附录 12.3，核查见附录 12.4 / 12.5）</td><td>设计与代码同步迭代中</td></tr>
-      <tr><td>日期</td><td>2026-11-17</td><td>讨论定稿日；v4.6 同日实施追认</td></tr>
+      <tr><td>版本</td><td>v4.8.2（在 v4.7 体验收口 D92–D99 之上，追加 D100–D108 自用体验根治：Leg 城际段域模型、内网 AI 通盘建议、卷首左轴、印记/行迹列表分离与归档删除、城市地图交还原生引擎、原生 POI 详情。演革见附录 12.3，核查见附录 12.4 / 12.5）</td><td>设计与代码同步迭代中</td></tr>
+      <tr><td>日期</td><td>2026-11-17 定稿；2026-11-18 v4.8 增补</td><td>讨论定稿日；v4.8 各批同日实施追认</td></tr>
       <tr><td>产物形态</td><td>高保真可点击交互原型（视觉完整、可操作）</td><td>非纯文档、非生产级全栈系统</td></tr>
       <tr><td>使用对象</td><td>仅用户本人使用</td><td>无账号体系，无多人协作</td></tr>
-      <tr><td>决策总量</td><td>99 项已确认决策（第二章总账 D01–D99）</td><td>每项均经用户当面确认、采用推荐项或实施追认</td></tr>
+      <tr><td>决策总量</td><td>108 项已确认决策（第二章总账 D01–D99 + 表 M D100–D108）</td><td>每项均经用户当面确认、采用推荐项或实施追认</td></tr>
     </tbody>
   </table>
   <div class="stat-grid" data-cols="4">
-    <div class="stat"><div class="num">99</div><div class="label">已确认决策</div></div>
+    <div class="stat"><div class="num">108</div><div class="label">已确认决策</div></div>
     <div class="stat"><div class="num">17</div><div class="label">功能模块规格</div></div>
     <div class="stat"><div class="num">13</div><div class="label">实施阶段（Phase 0–12）</div></div>
     <div class="stat"><div class="num">0</div><div class="label">后端依赖（纯静态）</div></div>
@@ -312,7 +312,7 @@ table.table td.dno, table.table th.dno { text-align: center; font-weight: 700; c
   <h2>目 录</h2>
   <ol class="list">
     <li><a href="#sec-1">一、产品定位：拾程是什么</a></li>
-    <li><a href="#sec-2">二、需求决策总账（D01–D90）</a></li>
+    <li><a href="#sec-2">二、需求决策总账（D01–D108）</a></li>
     <li><a href="#sec-3">三、用户旅程与使用场景</a></li>
     <li><a href="#sec-4">四、功能规格详述</a></li>
     <li><a href="#sec-5">五、视觉设计规范（宋韵雅致）</a></li>
@@ -535,10 +535,10 @@ table.table td.dno, table.table th.dno { text-align: center; font-weight: 700; c
     <tbody>
       <tr><td class="dno">D69</td><td>底图三档（扩 D09）</td><td>D09 原为「水墨样式 + 标准底图开关」两态，实施中扩为三档：<b>水墨舆图</b>（自绘 SVG，零瓦片、断网可看）/ <b>真实·纸色</b>（腾讯 GL 压成宣纸色、去标注）/ <b>真实·标准</b>（保留路名与地点标注）。状态存 <code>ui.settings.baseMap: 'ink'|'paper'|'standard'</code>，设置面板三格分段钮切换，写 localStorage 并兼容旧版 <code>standardMap</code> 布尔存档。</td></tr>
       <tr><td class="dno">D70</td><td>纸色配方（D09 实现细则）</td><td><b>不用腾讯自定义 style。</b>腾讯 GL 的 style 结构与常见地图厂商（featureType/elementType 式）不同，写错不会报错，而是把整层渲染成空白（实测踩过）。改为「原样式 + CSS 处理」：容器滤镜 <code>saturate(.58) brightness(1.02) contrast(.96)</code> → 纸色罩 <code>var(--paper)</code> 以 <code>mix-blend-mode: color</code>、opacity .66 混合 → 四角暗角 → feTurbulence 纸纹。<b>为什么用 color 不用 multiply</b>：color 只夺色相、保留明度层次，路网与水系仍可分辨；multiply 会把路网压没。</td></tr>
-      <tr><td class="dno">D71</td><td>底图去标注</td><td><code>baseMap.features = ['base','road','building']</code>（标准档追加 <code>'point'</code>）。去掉腾讯自带 POI 气泡与路名，避免压住印章、注名与墨线；代价是"找路"信息变少，故保留 D69 的标准档作为可读性出口。</td></tr>
+      <tr><td class="dno">D71</td><td>底图标注与原生 POI（修订于 v4.8 / D107）</td><td><b>初版</b>：<code>baseMap.features = ['base','road','building']</code>（仅标准档追加 <code>'point'</code>），去掉自带标注避免压印章。<b>v4.8 修订</b>：<code>point</code> 要素在两档<b>常开</b>——否则腾讯 GL 的 <code>click</code> 事件不带 <code>evt.poi</code>，原生地点（酒店/餐馆/景点等）就点不出详情（D107）。纸色档改为<b>靠样式隐藏标注文字</b>（<code>tmap.ts</code> 的 poi label visibility）来避免叠字，而不再关闭 point 要素本身。</td></tr>
       <tr><td class="dno">D72</td><td>路线真实化四通道</td><td><code>API_MODE = { taxi:'driving', walk:'walking', bike:'bicycling', transit:'transit' }</code>；公交把 <code>routes[0].steps[].polyline</code> 逐段解压后拼成一条连续折线；打车费用服务不返回，仍按 2.4 元/公里估（下限 8 元），公交取接口 <code>price</code>（单位分）。</td></tr>
       <tr><td class="dno">D73</td><td>压缩坐标解压</td><td>腾讯 polyline：<b>首点为绝对经纬度，其后每两个数是相对前一点的差值（1e-6 度）累加</b>——不是每段重新取绝对值。曾按"遇 (0,0) 重同步"实现，末点算到 <code>[-95.0002,-18.9999]</code> 的荒唐值；改纯差值累加后末点 <code>[25.60598,100.266924]</code>，与目的地误差约 10 米。<code>(0,0)</code> 视为重复点跳过，相邻重复点按 1e-6 清洗，否则线宽渲染发毛。</td></tr>
-      <tr><td class="dno">D74</td><td>GL 与 SVG 对齐</td><td>GL 只当静态画面：<code>draggable / scrollable / doubleClickZoom / touchZoomable / pitchable / rotatable</code> 全 false，视野由外层 <code>bounds</code> 单向驱动。zoom 由跨度反算 <code>z = log2(cssW·360 / (256·spanLng))</code>；因 GL 会吸附瓦片精度（实测偏约 1.5%），初始化后 260ms 读 <code>getBounds()</code> 实测再补一次修正，然后重设中心。</td></tr>
+      <tr><td class="dno">D74</td><td>GL 与 SVG 对齐（交互方式修订于 v4.8 / D106）</td><td><b>初版</b>：GL 只当静态画面，<code>draggable / scrollable / doubleClickZoom / touchZoomable</code> 全 false，视野由外层 <code>bounds</code> 单向驱动，拖拽靠 CSS transform 模拟。<b>v4.8 修订</b>：真实底图把这些原生手势<b>全部打开</b>，拖拽/缩放交还 GL 引擎（跟手、有惯性、松手无回弹），<code>pan/zoom/center_changed</code> 逐帧回传视野让 SVG 覆盖层实时跟随（D106）。zoom 仍由跨度反算 <code>z = log2(cssW·360 / (256·spanLng))</code>，并因瓦片吸附（实测偏约 1.5%）在初始化后 260ms 读 <code>getBounds()</code> 补一次修正；此公式只用于<b>初始定位与程序化聚焦</b>，不再参与交互期。<code>pitchable / rotatable</code> 始终 false（2D 俯视）。</td></tr>
       <tr><td class="dno">D75</td><td>水墨常驻打底</td><td>自绘舆图不再条件渲染，恒为最底层；GL 收到 <code>idle</code>（或 1800ms 兜底）后 500ms 淡入盖住。解决瓦片未铺满时的整屏闪白，也让"淡入"本身成为一次过场。</td></tr>
       <tr><td class="dno">D76</td><td>渐进式补路线</td><td><code>refineDay(dayIndex)</code> 逐段把 <code>estimated</code> 段替换为真实值，失败则保留估算、继续挂朱砂「估」字，不打断任何编辑动作。<code>inflight</code> Set 以「段 ID + 方式 + 两端坐标」为戳防重复请求；返回后比对 <code>still.mode === modeAtRequest</code>，用户中途改了方式就丢弃过期结果。</td></tr>
       <tr><td class="dno">D77</td><td>布局让位（D06/D44 收敛）</td><td>桌面：左右栏与地图同为 flex 子项，抽屉<b>参与布局</b>而非覆盖地图（覆盖式会挡住画面，用户明确反对）；地图容器 <code>min-h-0</code> 保证可压缩。移动：bottom sheet 参与 flex，地图自动收缩。<b>悬浮元素归属</b>：FAB 组落在 <code>.map-stage</code> 内（不压底部抽屉）；图例抬到 <code>bottom-10</code> 躲开腾讯 logo；城市竖排题签与搜索条各占独立行。</td></tr>
@@ -597,6 +597,29 @@ table.table td.dno, table.table th.dno { text-align: center; font-weight: 700; c
   </table>
 </div>
 
+<h2 class="heading">2.12 表M · 自用体验根治（D100–D108，v4.8）</h2>
+<div class="table-wrap">
+  <div class="table-caption">表M 四批自用体验根治的正式追认（v4.8.0–v4.8.2，专题细则见 L / A / O 系列）</div>
+  <table class="table" data-caption="表M 自用体验根治">
+    <colgroup><col style="width:8%"><col style="width:22%"><col style="width:70%"></colgroup>
+    <thead><tr><th class="dno">编号</th><th>决策点</th><th>定案与关键边界</th></tr></thead>
+    <tbody>
+      <tr><td class="dno">D100</td><td>Leg 城际段域模型</td><td>引入 <code>Leg</code> 为城际移动的一等公民：6 种城际方式（高铁/火车/飞机/自驾/大巴/徒步）与市内 4 式彻底分开；Leg 全局存 <code>Trip.legs</code>、按到达日 <code>day.legIds</code> 引用；时间轴渲染真实 <code>leg</code> 条目取代旧「翌日赴X」文案；地图城际连线独立线型。<b>已落地 L01–L04</b>；同日多城（CityStay）明确列为未做缺口。详见 <code>领域模型重构设计文档-Leg.md</code>。</td></tr>
+      <tr><td class="dno">D101</td><td>内网 AI 通盘建议</td><td>智能小助手第五张卡，由 AI 从既有动作里挑一条（改交通方式/顺序/精简/补入/无）+ 人话理由；点「采用」走与手动完全相同的 store 方法，撤销栈与真实路线自动继承，<b>数据模型零改动</b>。手动触发、按天隔离的忽略态、命中缓存、畸形返回整条丢弃。<b>公网构建整块不渲染</b>（明文内网端点在 https 会被 mixed content 拦截），仅 <code>npm run build:lan</code> 注入 <code>VITE_AI_ENABLED=1</code> 后出现。详见 <code>AI辅助设计文档-A.md</code>。</td></tr>
+      <tr><td class="dno">D102</td><td>首页卷首左轴</td><td>首页左侧 130px 常驻信息轴，以渐隐纸色浮层<b>覆盖在地图上</b>（不硬切、不割裂）：题签 + 态铭（印记/行迹）+ 气韵数字 + 印谱 + 年次；省视图时追加当前省匾与「返 · 九州」回退钮。省域聚焦时加大纸色不透明度保证可读。修订 4.1「右缘竖挂轴」的旧布局。</td></tr>
+      <tr><td class="dno">D103</td><td>列表按态分离与归档删除</td><td>攻略清单与地图态严格对应：<b>印记态只列未行攻略，行迹态只列已行卷</b>；两态均支持按日期排序与年份折叠/展开。每条目悬浮才浮现归档/删除按钮（保持清单洁净），删除需二次确认。归档写 <code>completedAt</code>、恢复清除；撤销栈支持删除后整卷放回（修 <code>undo()</code> 遇已删攻略直接返回的缺陷）。</td></tr>
+      <tr><td class="dno">D104</td><td>印记语义收口</td><td>已结束（行了）的攻略不再留在「印记」地图落印，只在「行迹」态出现；每个盖章地点的名称<b>仅鼠标悬浮/选中时显现</b>（推荐点平时只留方印），不再一整片字盖住地图。修订 4.1 城市印记与 D79 注名策略。</td></tr>
+      <tr><td class="dno">D105</td><td>省份放大视图收口</td><td>选定省后地图放大以目标省居中；<b>非目标省禁用悬浮变色</b>、指针穿透，目标省淡朱砂晕染、加粗描边、大字匾额显示省名，避免"看不清当前是哪个省"。小省/直辖市留白加大并把缩放封顶（约 5.2），防止滤镜在极大 scale + 大位移下渲染空白。回退入口收进卷首左轴（D102），不再用地图角按钮。</td></tr>
+      <tr><td class="dno">D106</td><td>城市地图交还原生引擎（修 D74）</td><td>真实底图开启 GL 原生 <code>draggable/scrollable/doubleClickZoom/touchZoomable</code>，pointerdown 不再劫持指针；SVG 覆盖层逐帧跟随 <code>view</code> 回传，消除 CSS transform 松手归零的视觉弹跳。交互期暂停线路动画、降低滤镜层透明度让出合成层。聚焦/±缩放/复位改走 GL 实例方法；无 Key 的水墨底图保留原 transform 拖拽。<b>验收必须用真实 DOM 鼠标事件</b>——直接 <code>emit</code> 触发事件属"假通过"，曾被用户实测戳穿。</td></tr>
+      <tr><td class="dno">D107</td><td>真实底图原生 POI 详情</td><td>腾讯底图自带的酒店/餐馆/学校等非「食住玩」原生地点现在可点击并弹出完整 PlaceCard（名称/类别/地址/收藏·加日程·导航·记一笔·题跋），异步用地点搜索补全类别评分、补不到走逆地理编码；<b>只弹详情，绝不擅自加入当天日程</b>，由用户自行决定。落印弹层亦展示附近现成地点供选。修订 D71（point 常开）与 4.9。</td></tr>
+      <tr><td class="dno">D108</td><td>统一撤销栈补删除恢复</td><td><code>undo()</code> 原在快照对应的攻略已不存在时直接返回，导致删除无法撤销；改为把快照整卷重新插回，并切回该攻略，使"删除 → toast 撤销"真正可用。延伸 D03 的单一撤销栈原则。</td></tr>
+    </tbody>
+  </table>
+</div>
+<aside class="callout" data-variant="info">
+  <p><b>表M 的来源：</b>此批决策起于用户对自用体验的连续实测反馈（"行了的还留在印记上""拖拽松手卡顿""酒店点了没反应"等），按 D90「变更先改文档」纪律在此正式追认。L / A / O 三份专题文档分别是表 M 中 D100 / D101 / O01–O13 的展开；本表是主文档内的索引与定案。</p>
+</aside>
+
 <!-- ===== 三、用户旅程 ===== -->
 <h1 class="heading" id="sec-3">三、用户旅程与使用场景</h1>
 <div class="doc-section">
@@ -632,12 +655,14 @@ table.table td.dno, table.table th.dno { text-align: center; font-weight: 700; c
 
 <h2 class="heading">4.1 首页 · 我的攻略（MyTripsView，路由 /）</h2>
 <div class="doc-section">
-  <h3 class="heading">页面构成（一图一轴，D60/D61）</h3>
+  <h3 class="heading">页面构成（一图一轴，D60/D61；左轴收口于 D102）</h3>
   <ul class="list">
     <li><b>满幅地图舞台</b>：中国地图升为整页底层（去卡片边框，水墨边界融入宣纸底）；有 Key 时=腾讯 GL 全国视图套水墨样式（可缩放可点选省份城市）；无 Key 时=自绘 SVG 中国轮廓+淡省界（仅装饰与降级入口，不做精确省界）。地图之上不再悬浮任何输入控件。</li>
-    <li><b>站标题签</b>：左上角落站标「拾程」印 + 一行小楷副题（画卷题签位），撤销顶部横幅与右上大按钮。</li>
-    <li><b>右缘竖挂轴（ScrollSidebar）</b>：收起态≈48px 轴条（轴头 + 竖排「拾程 · 卷」+ 篆书小印）；展开态≈340px 全高卷面板，覆盖式不让位，点外/Esc 收合。卷内自上而下：<b>城市搜索框</b>（300ms 防抖调 WebService 地点搜索城市级；无 Key 按内置城市表约 30 城+种子三城过滤）→「印记 · 行迹」双态开关（Phase 10 落地，规格见 4.17）→「新建攻略」朱砂钮 → <b>我的攻略列表</b>（卷轴式条目：自刻闲章/天数/预算执行/updatedAt，倒序；行中带朱砂点）→ <b>已行卷归档区</b>（折叠、可恢复）→ 卷尾设置入口（Key/JSON 备份）。</li>
-    <li><b>城市印记</b>：做过攻略的城市在图上落一枚小印——未出发墨色、进行中朱砂、已完成盖「行」字；点印记=快捷进入该城最新攻略（无攻略则以近似中心开新建向导）。</li>
+    <li><b>卷首左轴（D102，v4.8 修订）</b>：约 130px 常驻信息轴，以<b>渐隐纸色浮层覆盖在地图上</b>（留一条渐隐墨线分隔，不与地图硬切；早期"硬隔开"方案因割裂被否）。自上而下：<b>站标题签</b>（「拾程」印 + 小楷副题）→ <b>态铭</b>（印记 / 行迹，随地图态切换）→ <b>气韵数字</b>（两态各三个最相关量）→ <b>印谱</b>（图例）→ <b>年次索引</b>。省视图时追加<b>省域匾额</b>（简称省名，见 <code>PROVINCE_SHORT</code>）与<b>「返 · 九州」回退钮</b>，纸色不透明度加大保证可读。此轴替代并撤销早期「右缘竖挂轴（ScrollSidebar）」的折叠卷面板方案——那套收起/展开态使左侧大块空旷，实测观感割裂。</li>
+    <li><b>搜索与新建入口</b>：城市搜索框（300ms 防抖调 WebService 地点搜索城市级；无 Key 按内置城市表过滤）与「新建攻略」朱砂钮保留为独立控件，不再塞进可折叠挂轴。</li>
+    <li><b>攻略清单（D103，v4.8 修订）</b>：与地图态严格对应——<b>印记态只列未行攻略，行迹态只列已行卷</b>；两态均按日期排序、按年份折叠/展开（无日期归「未定年」）。每条目平时洁净，<b>悬浮/聚焦才浮现归档与删除钮</b>；删除需二次确认，归档与删除均可 toast 撤销。行中攻略带朱砂「进行中」标。</li>
+    <li><b>城市印记（D104，v4.8 修订）</b>：做过攻略的城市在图上落一枚小印——未出发墨色、进行中朱砂、已完成盖「行」字；<b>已结束（行了）的攻略不再留在印记地图</b>，只在行迹态出现；印章名称<b>仅悬浮/选中时显现</b>，不再常亮。点印记=进入该城最新攻略（无攻略则以近似中心开新建向导）。</li>
+    <li><b>省域下钻</b>：点省份进入省视图（D105）——目标省居中放大、淡朱砂晕染加粗、大字匾额标省名，非目标省禁悬浮变色且指针穿透；回退走左轴「返 · 九州」。省名以简称呈现，缩放封顶约 5.2 防滤镜空白。</li>
     <li><b>空态</b>：地图中央竖排题跋小楷「展卷，自一城始」（不占控件位）。</li>
   </ul>
   <h3 class="heading">新建攻略流（TripWizard）</h3>
@@ -679,7 +704,7 @@ table.table td.dno, table.table th.dno { text-align: center; font-weight: 700; c
     <tbody>
       <tr><td>顶部卷首横幅</td><td>攻略标题 + 自刻闲章 + 日期范围 + 预算执行细字 + 「今天」入口（行中出现）</td><td>细双边线；点标题可改；点预算跳记账抽屉</td></tr>
       <tr><td>左侧日程栏</td><td>Day 1–N 竖排（细墨线串联，仿卷轴题签）：各日 POI 数徽章 + 主题日标题</td><td>点 Day 切换聚焦；「+ 加一天」尾钮</td></tr>
-      <tr><td>中央地图</td><td>水墨城市底图 + 印章标记 + 交通线路/动画 + 天气角标 + 搜索框（顶部悬浮）</td><td>点空白收卡片；长按落自定义点；滚轮缩放</td></tr>
+      <tr><td>中央地图</td><td>水墨/真实城市底图 + 印章标记 + 交通线路/动画 + 城际段连线（D100）+ 天气角标 + 搜索框（顶部悬浮）</td><td>真实底图用 GL 原生拖拽缩放（跟手无回弹，D106），水墨底图保留 transform 拖拽；点自有印章收详情；点真实底图原生 POI（酒店/餐馆等）弹 PlaceCard 详情（不擅自入日程，D107）；点空白长按落自定义点；滚轮缩放</td></tr>
       <tr><td>右侧抽屉</td><td>「行程时间轴 / 记账本」两页签（天气并入时间轴）；卷轴徐展动效 0.3s</td><td>可折叠全屏地图；ESC 关闭</td></tr>
       <tr><td>右下 FAB 组</td><td>「更多」印钮：全览/聚焦、朱笔、回放、忆游、归档、导出、设置、我的攻略（D97，桌面移动端统一）</td><td>展开式印钮组；桌面同样常驻，承担工具条收敛出的低频入口</td></tr>
       <tr><td>收藏池</td><td>左侧日程栏下方或独立侧签「心愿池 N」</td><td>点开为侧抽屉；池内项可拖入日程（桌面）</td></tr>
@@ -760,10 +785,11 @@ table.table td.dno, table.table th.dno { text-align: center; font-weight: 700; c
       <tr><td>顺路重排</td><td>Day 内 ≥3 个非驻地 POI 时出现「顺路」钮</td><td>地图虚线 + 列表虚框预览新顺序</td><td>「采用 / 放弃」，采用后可撤销恢复</td></tr>
       <tr><td>过载预警</td><td>当日非驻地 POI&gt;8 个，或当日交通总时长&gt;180 分钟</td><td>日程栏该 Day 挂朱砂「满」小印 + 提示条</td><td>点开看明细（可忽略/移出一项）</td></tr>
       <tr><td>欠载提醒</td><td>推算日结束时刻 &lt;15:00 且当日已有 ≥1 个非驻地 POI</td><td>提示「下午尚空」+ 池内就近 POI 推荐 3 个 +「加一天」钮</td><td>点推荐直达卡片；加一天即时生效</td></tr>
+      <tr><td>⑤ AI 通盘建议（D101，v4.8）</td><td>手动点「请 AI 通盘看一眼」；仅内网构建且填了端点+Key 才渲染按钮</td><td>规则卡之上第五张卡：一条受限动作（改方式/顺序/精简/补入/无）+ 人话理由</td><td>「采用」走现有 store 方法（撤销与真实路线自动继承）；「忽略」按天持久化；畸形返回整条不显示</td></tr>
     </tbody>
   </table>
-  <p class="paragraph noindent">设计原则：辅助<b>只建议不强制</b>（顺路重排虚线预览、过载可忽略），编辑主导权始终在用户——用户明确要求「纯手动可控」的精神。</p>
-  <p class="paragraph noindent"><span class="badge">阶段</span> Phase 4。</p>
+  <p class="paragraph noindent">设计原则：辅助<b>只建议不强制</b>（顺路重排虚线预览、过载可忽略、AI 采用即手动同路径），编辑主导权始终在用户——用户明确要求「纯手动可控」的精神。忽略态统一存 <code>shicheng:dismissed</code>、按攻略+按天隔离，键用 POI id/日序而非易变的段 id（O06）。AI 卡细则见 <code>AI辅助设计文档-A.md</code>，公网构建整块不渲染。</p>
+  <p class="paragraph noindent"><span class="badge">阶段</span> Phase 4；AI 卡 v4.8.0（内网构建）。</p>
 </div>
 
 <h2 class="heading">4.8 时间推算</h2>
@@ -785,8 +811,10 @@ table.table td.dno, table.table th.dno { text-align: center; font-weight: 700; c
     <li><b>导航</b>：卡片点「导航」→ 出行方式弹层 → 移动端 qqmap:// 唤起腾讯地图 App（带起终点坐标）；Web 端降级跳 apis.map.qq.com/uri/v1/ 路线页；均不可用时弹演示提示。</li>
     <li><b>记一笔</b>：卡片直接新建开销（4.13），预填：日期=该 POI 所在日、关联 poiId、分类按类别猜（美食→餐饮、景点→门票）。</li>
     <li><b>题跋</b>：卡片一角毛笔图标 → 小楷输入一句手记（≤50 字），存 POI.note，导出呈题跋。</li>
+    <li><b>真实底图原生 POI（D107，v4.8）</b>：有 Key 时，腾讯底图自带的酒店/餐馆/学校等原生地点均可点击（point 要素常开，<code>click</code> 事件取 <code>evt.poi</code>），弹同一张 PlaceCard；异步用地点搜索 suggestion 精确匹配补全类别、评分、人均、开放时间，匹配不到用逆地理编码补地址。临时以 <code>source:'map'</code> 落库。<b>只弹详情、不自动加入日程</b>——加不加由用户点「加入日程」决定；拖动/长按时吞掉点击避免误触。</li>
+    <li><b>推荐点注名（D104）</b>：地图上的推荐/热门地点平时只显示方印章，名称仅悬浮或选中时显现，避免一整片文字盖住地图（配合 D79 抗遮挡锚点与去重）。</li>
   </ul>
-  <p class="paragraph noindent"><span class="badge">阶段</span> Phase 5。</p>
+  <p class="paragraph noindent"><span class="badge">阶段</span> Phase 5；原生 POI 详情 v4.8.2。</p>
 </div>
 
 <h2 class="heading">4.10 自定义落点与朱笔批注</h2>
@@ -1244,7 +1272,7 @@ table.table td.dno, table.table th.dno { text-align: center; font-weight: 700; c
 
 export type POICategory = 'food' | 'hotel' | 'sight' | 'shop' | 'custom'
 export type PoiRole = 'stop' | 'base'               // stop=途经点 base=驻地锚点（D29）
-export type PoiSource = 'api' | 'seed' | 'custom'
+export type PoiSource = 'api' | 'seed' | 'custom' | 'map'   // map=真实底图原生地点（D107，v4.8）
 
 export interface POI {
   id: string
@@ -1280,6 +1308,19 @@ export interface TransportSegment {
   transferCount?: number
   path?: LngLat[]                                     // 真实点列或两点直线
   estimated: boolean                                  // true=直线×经验速度估算（「估」）
+  pinned?: boolean                                    // O05：固定走法，增量重建时豁免删除/覆盖
+}
+
+// ── 城际段（D100 / L 系列，v4.8）────────────────────
+export type LegMode = 'highspeed' | 'train' | 'flight' | 'car' | 'coach' | 'walk'
+export interface Leg {
+  id: string
+  fromCity: string; toCity: string
+  mode: LegMode                                       // 6 种城际方式，与市内 4 式分开
+  departTime?: string; arriveTime?: string
+  durationMin?: number; cost?: number                  // cost 单位分
+  note?: string                                        // 车次/航班号
+  estimated?: boolean
 }
 
 export interface DailyWeather {
@@ -1299,7 +1340,8 @@ export interface DayPlan {
   departTime?: string                                  // 默认 '09:00' 可改
   poiIds: string[]                                     // 有序，驻地 base 单独槽位
   basePoiId?: string                                  // 驻地锚点
-  segmentIds: string[]                                 // 相邻两点间交通段
+  segmentIds: string[]                                 // 相邻两点间市内交通段
+  legIds: string[]                                     // L01：本日城际段引用（多条→同日跨城表达）
   weather?: DailyWeather
 }
 
@@ -1332,11 +1374,13 @@ export interface Trip {
   pois: Record&lt;string, POI&gt;                            // 本攻略全量 POI（含池/已移出）
   wishlist: string[]                                  // 收藏池 POI ids
   segments: Record&lt;string, TransportSegment&gt;
+  legs: Record&lt;string, Leg&gt;                          // L01：城际段字典，按 day.legIds 引用（到达日归属）
   expenses: Expense[]
   annotations?: InkStroke[]
   totalBudget?: number                                 // 元；可选
   coverImage?: string
   archived: boolean
+  completedAt?: number                                 // D103：归档时间；恢复时清除
   createdAt: number; updatedAt: number
 }
 
@@ -1354,9 +1398,11 @@ export interface UIState {
 export type TimelineEntry =                            // 派生：时间轴渲染单元
   | { kind: 'poi'; time: string; poiId: string; arrive: string; leave: string }
   | { kind: 'move'; time: string; segmentId: string }
+  | { kind: 'leg'; time: string; legId: string; arrive: string }  // L03：真实城际条目（取代旧 divider 文案）
   | { kind: 'stay'; label: string }                    // 夜间「宿 · XX」小卡
-  | { kind: 'divider'; label: string }                 // 跨城「翌日 · 赴丽江」分隔卡
+  | { kind: 'divider'; label: string }                 // 兼容旧数据的跨城分隔（新数据不再产生）
   | { kind: 'expense'; expenseId: string }</code></pre>
+  <p class="paragraph noindent"><b>模型演进注记（v4.8）</b>：Data Model 在 v4.7 基础上做加法——<code>map</code> POI 来源、<code>pinned</code> 段、<code>Leg</code> 城际段与 <code>legIds</code>、<code>completedAt</code> 归档时间、<code>leg</code> 时间轴条目；均通过 <code>normalizeTrip</code> 兼容旧存档（补默认值、丢弃悬空引用）。CityStay（同日多城精细停留）明确未引入，见附录 12.5。</p>
 </div>
 
 <h2 class="heading">6.4 状态管理（Pinia）</h2>
@@ -1379,7 +1425,7 @@ export type TimelineEntry =                            // 派生：时间轴渲�
     <colgroup><col style="width:14%"><col style="width:36%"><col style="width:50%"></colgroup>
     <thead><tr><th>层</th><th>能力</th><th>接入方式</th></tr></thead>
     <tbody>
-      <tr><td>视觉层</td><td>底图渲染、印章标记、墨线路线、信息窗、flyTo、聚合</td><td>JS API GL：运行时检测 Key → 动态加载 gljs?v=1.exp&amp;libraries=service,geometry → 套自定义水墨样式 → 加载失败走 SVG 降级</td></tr>
+      <tr><td>视觉层</td><td>底图渲染、印章标记、墨线路线、原生 POI 点选（D107）、聚焦动画、聚合</td><td>JS API GL：运行时检测 Key → 动态加载 gljs?v=1.exp&amp;libraries=service,geometry → 套自定义水墨样式 → 加载失败走 SVG 降级；有 Key 时拖拽/缩放交还 GL 原生引擎（D106）</td></tr>
       <tr><td>数据层</td><td>城市/地点搜索、路线规划（4 式）、逆地理</td><td>WebService <b>JSONP</b>（output=jsonp&amp;callback=cb，浏览器端免跨域）；段级/类别级缓存；199 检测弹引导</td></tr>
       <tr><td>行动层</td><td>一键唤起导航</td><td>URI API：移动端 qqmap://（带起终点坐标）；Web 端 apis.map.qq.com/uri/v1/ 页面降级</td></tr>
     </tbody>
@@ -1389,8 +1435,9 @@ export type TimelineEntry =                            // 派生：时间轴渲�
     <li><b>权限探测</b>：GL 加载即实测渲染能力；WebService 首调若返回 status:199 → KeyGuideModal 引导控制台补开，期间种子城市照常可用。</li>
     <li><b>Key 安全</b>：因 Key 已在对话中明文出现过，上线前必须在控制台配置域名白名单（EdgeOne 域名）；个人 Key 搜索配额约 200 次/天、5 QPS。</li>
     <li><b>Key 注入</b>（D80）：构建期 <code>VITE_TMAP_KEY</code>（.env，不入仓库）+ 运行时设置面板覆盖；<code>VITE_</code> 变量会进产物，故只算"不明文写进源码"，不算保密。</li>
-    <li><b>叠加层对齐</b>（D74）：SVG 叠加层用已做 cos 修正的线性投影，其 <code>spanX/spanY</code> 之比与 Web Mercator 同比例，因此把 bounds 四角交给 GL 即可对齐；zoom 反算 <code>z = log2(cssW·360/(256·spanLng))</code>，再用 <code>getBounds()</code> 实测补 1.5% 的瓦片吸附误差。GL 手势全关，视野单向由 bounds 驱动。</li>
-    <li><b>纸色实现</b>（D70）：<b>不写自定义 style</b>（腾讯 style 结构易写错且不报错，会让底图整层空白），改用 CSS 滤镜 + 纸色 <code>mix-blend-mode: color</code> 混合，保明度、可分辨路网；<code>baseMap.features</code> 去掉自带标注（D71）。</li>
+    <li><b>叠加层对齐</b>（D74 / D106）：SVG 叠加层用已做 cos 修正的线性投影，其 <code>spanX/spanY</code> 之比与 Web Mercator 同比例，因此把 bounds 四角交给 GL 即可对齐；zoom 反算 <code>z = log2(cssW·360/(256·spanLng))</code>，再用 <code>getBounds()</code> 实测补 1.5% 的瓦片吸附误差（仅初始定位/程序化聚焦用）。<b>v4.8 起真实底图 GL 原生手势全开，视野由 GL 逐帧回传（<code>pan/zoom/center_changed</code>）驱动 SVG 覆盖层跟随</b>，不再单向由 bounds 驱动、不再用 CSS transform 模拟拖拽；拖动期间忽略半路的 view 回调以防重投影抖动。无 Key 的水墨底图仍走 transform 拖拽。</li>
+    <li><b>纸色实现</b>（D70 / D71）：<b>不写自定义 style</b>（腾讯 style 结构易写错且不报错，会让底图整层空白），改用 CSS 滤镜 + 纸色 <code>mix-blend-mode: color</code> 混合，保明度、可分辨路网。标注处理：早期直接 <code>baseMap.features</code> 去 <code>point</code>，但这样拿不到原生 POI 点击（<code>evt.poi</code>）；v4.8 改为 <code>point</code> 常开、<b>靠 tmap.ts 样式隐藏纸色档的标注文字</b>，兼顾"不压印章"与"原生地点可点"。</li>
+    <li><b>AI 接入双轨</b>（D101）：<code>src/lib/ai.ts</code> 走 Dify Service API，<code>aiBase/aiKey</code> 存 localStorage（<code>shicheng:aiBase</code> / <code>shicheng:aiKey</code>）、不进代码库；仅 <code>VITE_AI_ENABLED=1</code> 的内网构建渲染入口。发送前只取当日地点名/类别/时刻与收藏池候选，不发送账号、坐标、账目明细。</li>
   </ul>
 </div>
 
@@ -1657,6 +1704,8 @@ function estimate(from: LngLat, to: LngLat, mode: TransportMode) {
     <li><strong>v4.4（首页气韵轮）</strong><p>用户评首页「太死板不灵动」→ 诊断五病根（单色剪影无墨韵 / 印记全网格零节奏 / 首页零动效 / 布局机械对齐 / 无画眼）→ 定 D63–D68：晕墨四档 + 毛笔边线、山水笔意（山脉笔触/江河留白）、印记全套有机化（微旋 ±4°/两档/落印 stagger）、画眼=最近编辑（呼吸圈+题签挂线）、两动克制（常驻仅画眼呼吸+云雾只过一遍）、构图破格（竖排压边题签/题跋式统计行/空态未钲印）。分工定案：本侧只维护设计文档，代码由用户在 Cursor 实施（shicheng-cursor 目录）。累计 68 项决策。</p></li>
     <li><strong>v4.5（实现补遗轮）</strong><p>代码侧（shicheng-cursor）实施完成后反查文档：把超出文档的实现追认为 D69–D80，并新增 12.4 实现核查表记录文档已定而代码未达的 17 处。累计 80 项决策。</p></li>
     <li><strong>v4.6（落地与体验轮）</strong><p>按 12.4 建议顺序把一图一轴、行迹、首页气韵、宣纸呼吸、图层篆印、长按落点、跨日拖拽、199 引导、动效底座一次性收口；新增表K（D81–D90）；12.4 改为历史快照，12.5 记录剩余缺口。累计 90 项决策。确立「文档与代码同轮更新」纪律（D90）。</p></li>
+    <li><strong>v4.7（体验收口轮）</strong><p>D91 首页印记聚合 + D92–D99 体验收口：入城向导预选、移动 Tab 五枚、色板回写实现值、花费曲线自绘 SVG、FAB 桌面补位、原生控件纸面化、批注持久化修复、城市库与数字字体定案；累计 99 项决策。</p></li>
+    <li><strong>v4.8（自用体验根治轮，四批）</strong><p>用户对自用体验连续实测反馈后，按「最优最符合直觉就怎么做」授权分四批根治：①<strong>域模型与 AI</strong>——引入 Leg 城际段（L01–L04，D100）+ 内网 AI 通盘建议（A v0.2，D101）；②<strong>首页</strong>——卷首左轴覆盖地图（D102）、印记/行迹列表分离与年份折叠、归档删除悬浮才现与撤销恢复（D103）、印记语义与注名收口（D104）、省视图放大与回退收拢（D105）；③<strong>城市地图</strong>——交还 GL 原生拖拽缩放消除松手卡顿（D106）、原生 POI 点击出详情（D107）、统一撤销栈补删除恢复（D108）。关键教训：事件链验收必须用真实 DOM 鼠标事件，直接 <code>emit</code> 是"假通过"。累计 108 项决策。</p></li>
   </ol>
 </div>
 
@@ -1666,7 +1715,7 @@ function estimate(from: LngLat, to: LngLat, mode: TransportMode) {
   <aside class="callout" data-variant="tip"><p>原表J 17 处缺口中：行迹 / 一图一轴 / 气韵 / 宣纸呼吸 / 图层 / 长按 / 动效底座 / PWA 图标 已在 v4.6 收口；详见 12.5。</p></aside>
 </div>
 
-<h2 class="heading">12.5 剩余缺口（v4.6）</h2>
+<h2 class="heading">12.5 剩余缺口（v4.8.2）</h2>
 <div class="doc-section">
   <p class="paragraph noindent">诚实列出仍未达或可继续打磨的条目——不把「部分完成」说成「全部完成」。</p>
   <div class="table-wrap">
@@ -1680,13 +1729,17 @@ function estimate(from: LngLat, to: LngLat, mode: TransportMode) {
         <tr><td>4.2 缩放聚合</td><td>已按 D91 做网格墨点簇（首页）</td><td>编辑器城市图若 POI 过密可再套同一算法</td></tr>
         <tr><td>vue-konva 批注栈</td><td>批注仍为 canvas + rough；vue-konva 已装未用</td><td>保持现状或卸载依赖；对象化撤销非刚需</td></tr>
         <tr><td>public/lottie</td><td>无 JSON 素材；锦囊等仍用 CSS</td><td>有合适水墨 Lottie 再补，不硬凑</td></tr>
-        <tr><td>4.16 回放逐段生长</td><td>可逐日回放；未细化到逐段「行」语法</td><td>彩蛋，最后打磨</td></tr>
+        <tr><td>4.16 回放逐段生长</td><td><b>v4.7.1 已重做</b>为按日行程线图（中文地点名、时刻、当前站高亮、跨城块）；仍未细化到逐段「行」语法</td><td>彩蛋，最后打磨</td></tr>
         <tr><td>7.1 fetch-seed</td><td>静态种子够用</td><td>优化项</td></tr>
         <tr><td>D64 兴安岭</td><td>因纵向梯子观感缺席</td><td>若要补，改用短弧段而非长纵线</td></tr>
+        <tr><td>D100 / L05 同日多城停留</td><td><b>明确未做</b>：Leg 已落地（L01–L04），但 CityStay 未引入，一天仍只有一个主城，"上午 A 城玩、下午 B 城玩"不能精确表达</td><td>从"按 leg 把 day.poiIds 切成停留组"入手，风险最低</td></tr>
+        <tr><td>D100 / L06 城际估算与迁移</td><td>城际时长/票价需手填或标「估」，<code>estimate.ts</code> 城际档未做；旧 divider 跨城不自动转 Leg</td><td>按 city center 距离 + 方式经验速度/票价补估算与迁移</td></tr>
+        <tr><td>D101 AI 公网可用</td><td>AI 仅内网构建可用；公网 https 连明文内网端点被 mixed content 拦截，<b>无解，非配置问题</b></td><td>如需公网，改为服务端代理或 https 端点（超出当前自用边界）</td></tr>
+        <tr><td>O01–O13 体验优化</td><td><b>已完成</b>：O01–O13 随 v4.7–v4.8 逐条落地（跨城、出发时间、统一撤销、增量重建、显式段、建议记忆、口径、状态清理、导入保护、地图让位、路网可辨、记账图表、手柄）</td><td>见 <code>设计/体验优化设计文档.md</code> 与项目根同名文件</td></tr>
       </tbody>
     </table>
   </div>
-  <p class="paragraph"><b>结论（v4.7）</b>：v4.6 主表面已对齐；v4.7 体验收口（D92–D99）修复入城静默建攻略、移动 Tab 超载、色板漂移、花费曲线违和、原生控件跳戏、批注持久化半残、桌面缺 FAB 等断裂。剩余缺口收敛为：5.7 装饰类动效逐条铺装、印记聚合编辑器侧复用、回放逐段生长、fetch-seed、兴安岭笔触。另有 O01–O13 体验优化清单（见 project/体验优化设计文档.md）待立项。</p>
+  <p class="paragraph"><b>结论（v4.8.2）</b>：v4.6 主表面已对齐；v4.7 体验收口（D92–D99）修复入城静默建攻略、移动 Tab 超载、色板漂移、花费曲线违和、原生控件跳戏、批注持久化半残、桌面缺 FAB 等断裂；v4.8 四批根治（表 M / D100–D108）补上 Leg 城际段、内网 AI 建议、卷首左轴、印记/行迹列表分离与归档删除、城市地图交还原生引擎与原生 POI 详情，O01–O13 全部落地。剩余缺口收敛为：5.7 装饰类动效逐条铺装、印记聚合编辑器侧复用、回放逐段生长、fetch-seed、兴安岭笔触，以及 L05 同日多城 / L06 城际估算迁移、AI 公网可用性（受 mixed content 硬限）。</p>
 </div>
 
 <h1 class="heading">主要数据来源</h1>
