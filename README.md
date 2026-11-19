@@ -1,6 +1,8 @@
 # 拾程 · 国风旅行地图攻略编辑器（v4.8.2）
 
-把「做攻略」「在路上」「回来后」三条命压到同一张水墨地图上：出发前自己选点、排日程、定交通；旅途中打开一张图点一下就能解决衣食住行；归来后归档、回顾、留题跋。设计基准见仓库内 `设计/拾程设计文档.html`（D01–D108）。
+把「做攻略」「在路上」「回来后」三条命压到同一张水墨地图上：出发前自己选点、排日程、定交通；旅途中打开一张图点一下就能解决衣食住行；归来后归档、回顾、留题跋。设计基准见 [`project/docs/拾程设计文档.html`](project/docs/拾程设计文档.html)（D01–D108）。
+
+> 应用源码在 `project/`，设计文档统一放在 `project/docs/`。下面的命令先 `cd project` 进入应用目录再执行。
 
 视觉走**宋代青绿山水手卷 + 文人舆图**：宣纸米白打底，远山以淡青虚写，近山用石绿染、墨线勾脊、披麻皴补笔；水系青绿染配水纹与岸线；道路只留一线赭墨，巷陌更细；田畴横斜成畦，聚落成组成村；全图覆云气与纸纹卷边，地名以毛笔行楷题识。项目是**高保真可点击交互原型**，不是生产级全栈系统。
 
@@ -9,6 +11,7 @@
 ## 一、跑起来
 
 ```bash
+cd project             # 应用根目录；设计文档在 project/docs/
 npm install
 cp .env.example .env   # 填入 VITE_TMAP_KEY（腾讯位置服务 Key），不填则用内置水墨舆图
 npm run dev        # http://localhost:5173
@@ -60,13 +63,13 @@ npm run icons      # 生成 PWA 印章 PNG（192 / 512）
 
 | 数据 | 来源 | 说明 |
 | --- | --- | --- |
-| 大理 / 丽江 / 北京种子 POI | 腾讯位置服务连接器实采（2026-11-17） | GCJ-02 坐标，未编造；见 `src/seed/` |
-| 其余城市 POI 快照 | `src/mock/cities-poi.json` | 无 Key 搜索兜底 |
+| 大理 / 丽江 / 北京种子 POI | 腾讯位置服务连接器实采（2026-11-17） | GCJ-02 坐标，未编造；见 `project/src/seed/` |
+| 其余城市 POI 快照 | `project/src/mock/cities-poi.json` | 无 Key 搜索兜底 |
 | 城市天气 | Open-Meteo 免 Key 为主 | 城市中心 WGS-84 查询，24h 缓存；失败回落 `SEED_WEATHER` |
 | 交通段真实路线 | 腾讯 WebService `direction/v1` | 有 Key 时驾车 / 步行 / 骑行 / 公交四条通道实时请求，返回真实距离、耗时、票价与折线；失败保留估算 |
 | 城市底图 | 腾讯 GL（`baseMap.features` 取 base/road/building/point） | 压成宣纸色调；原生 POI 由景 / 食 / 宿图层篆印统一控制显隐与点击；GL 失败或无 Key 回落自绘舆图 |
-| 省界与南海诸岛 | 阿里 DataV `100000_full.json` | 构建期转 SVG path，见 `src/data/china-paths.json` |
-| 交通时长 / 费用 | 本地经验估算 | `src/lib/estimate.ts`：步行 4.5、骑行 12、打车 30 km/h（+5min）；公交无 Key 不估 |
+| 省界与南海诸岛 | 阿里 DataV `100000_full.json` | 构建期转 SVG path，见 `project/src/data/china-paths.json` |
+| 交通时长 / 费用 | 本地经验估算 | `project/src/lib/estimate.ts`：步行 4.5、骑行 12、打车 30 km/h（+5min）；公交无 Key 不估 |
 
 **Key 说明**：设置里填的腾讯 Key 只存 `localStorage`（`shicheng:key`），仅在浏览器端用于 WebService / GL 视觉层；status 199 会弹权限引导。生产环境请改用安全密钥或服务端代理，不要把正式 Key 硬编码进前端。
 
@@ -88,7 +91,7 @@ npm run icons      # 生成 PWA 印章 PNG（192 / 512）
 
 ## 五、地图三层架构
 
-1. **视觉层**：三档底图，`src/lib/tmap.ts` 动态加载腾讯 JS API GL。
+1. **视觉层**：三档底图，`project/src/lib/tmap.ts` 动态加载腾讯 JS API GL。
    - `水墨舆图`：自绘 SVG，纯离线可用（山峦 / 水系 / 田畴 / 聚落）。
    - `真实·纸色`（默认）：真实路网 + `filter` / `mix-blend-mode: color` 压成宣纸单色调；底图原生 POI 的显隐由右上景 / 食 / 宿图层篆印统一控制（关闭的类别在 GL 样式里设 `visibility:off`）。
    - `真实·标准`：保留路名与地点标注，找路最直接；有图层过滤时套 `shicheng-std-filter`，只改 POI 显隐、底色仍为 normal。
@@ -96,8 +99,8 @@ npm run icons      # 生成 PWA 印章 PNG（192 / 512）
    - 对齐做法：`fitBounds` 的 cos 修正跨度与 Web Mercator 在小范围内同比例，按 `spanLng` 反算 zoom，再用 `getBounds()` 实测一次微调（GL 会把 zoom 吸附到瓦片精度）。
    - 首页 `ChinaInkMap.vue`：省界纸色微差 + 墨色描边，山脉以一串手绘小峰连缀，黄河（含河套回环）、长江、珠江以淡青水面 + 墨线落笔，配边缘远山、海波与闲章；下钻省级只显示目标省并题省名。
    - 城市 `InkFallbackMap.vue`：按城市 profile 生成山峦（圆浑峰头 + 皴笔 + 山脚淡入）、水系（青绿染 + 岸线双钩 + 水纹 + 沙洲）、田畴、聚落、巷陌与官道、桥、环城，外加题识、罗盘、比例尺与纸纹；未知城市按名称哈希稳定生成通用舆图。
-2. **数据层**：`src/lib/jsonp.ts` 封装腾讯 WebService，统一 199 检测、超时与缓存；`city` store 提供城市与 POI 搜索、逆地理。
-3. **行动层**：`src/lib/navigation.ts` 负责 URI API 导航跳转。
+2. **数据层**：`project/src/lib/jsonp.ts` 封装腾讯 WebService，统一 199 检测、超时与缓存；`city` store 提供城市与 POI 搜索、逆地理。
+3. **行动层**：`project/src/lib/navigation.ts` 负责 URI API 导航跳转。
 
 中国地图包含 **34 个省级行政区**，台湾单独成面，南海诸岛以左下独立插图呈现并标注「比例尺不同」；下钻省级时按惯例隐藏插图。
 
@@ -106,29 +109,33 @@ npm run icons      # 生成 PWA 印章 PNG（192 / 512）
 ## 六、目录结构
 
 ```
-src/
-├─ views/            MyTripsView（首页） / TripEditorView（编辑器）
-├─ router/           hash 路由，静态托管免 404
-├─ stores/           trip / ui / weather / city 四个 Pinia store
-├─ types/            Trip / DayPlan / POI / TransportSegment / Leg / Expense 等 v4.8 模型
-├─ components/
-│  ├─ map/           ChinaInkMap / MapCanvas / TencentBaseMap / InkFallbackMap / InkMarker
-│  │               RouteLayer / LegLayer / SegmentAnimator / WeatherBadge / AnnotateLayer
-│  ├─ editor/        DayPanel / PoiSearch / SegmentPicker / TripWizard / SmartAssist
-│  ├─ layout/        AppHeader / DayRail / FabGroup / WishlistPanel / LayerSeals / CityBadge
-│  │               ScrollSidebar / MapModeToggle
-│  ├─ panels/        PlaceCard / ItineraryDrawer / ExpenseDrawer
-│  │               TodayView / ReviewView / RolloutReplay
-│  └─ overlay/       ExportModal / SettingsModal / KeyGuideModal / ToastHost / TrailCityModal
-├─ lib/              estimate / timeline / jsonp / weatherApi / navigation
-│                   projection / motion / export / tmap / ai
-├─ seed/             大理 / 丽江 / 北京种子 POI 与示例攻略
-├─ data/             china-paths.json / cities.ts
-└─ styles/           global.css 设计系统
-legacy/              旧「九州行旅图」架构归档（不参与构建）
-scripts/             build-china-paths.mjs / shoot.mjs / zoom-map.mjs / verify-*.mjs
-shots/               v4-01 ~ v4-12 验收截图 + acceptance.json
-设计/                拾程设计文档.html（D01–D108）/ 体验优化设计文档.md / AI辅助设计文档-A.md / 领域模型重构设计文档-Leg.md
+.                      仓库根
+├─ README.md           本文件（GitHub 仓库首页展示）
+├─ .github/workflows/deploy.yml   GitHub Pages 自动部署流水线
+└─ project/            应用源码根目录（构建、脚本均在此执行）
+   ├─ src/
+   │  ├─ views/         MyTripsView（首页） / TripEditorView（编辑器）
+   │  ├─ router/        hash 路由，静态托管免 404
+   │  ├─ stores/        trip / ui / weather / city 四个 Pinia store
+   │  ├─ types/         Trip / DayPlan / POI / TransportSegment / Leg / Expense 等 v4.8 模型
+   │  ├─ components/
+   │  │  ├─ map/        ChinaInkMap / MapCanvas / TencentBaseMap / InkFallbackMap / InkMarker
+   │  │  │             RouteLayer / LegLayer / SegmentAnimator / WeatherBadge / AnnotateLayer
+   │  │  ├─ editor/     DayPanel / PoiSearch / SegmentPicker / TripWizard / SmartAssist
+   │  │  ├─ layout/     AppHeader / DayRail / FabGroup / WishlistPanel / LayerSeals / CityBadge
+   │  │  │             ScrollSidebar / MapModeToggle
+   │  │  ├─ panels/     PlaceCard / ItineraryDrawer / ExpenseDrawer
+   │  │  │             TodayView / ReviewView / RolloutReplay
+   │  │  └─ overlay/    ExportModal / SettingsModal / KeyGuideModal / ToastHost / TrailCityModal
+   │  ├─ lib/           estimate / timeline / jsonp / weatherApi / navigation
+   │  │               projection / motion / export / tmap / ai
+   │  ├─ seed/          大理 / 丽江 / 北京种子 POI 与示例攻略
+   │  ├─ data/          china-paths.json / cities.ts
+   │  └─ styles/        global.css 设计系统
+   ├─ docs/             设计文档：拾程设计文档.html（D01–D108）/ 体验优化设计文档.md / AI辅助设计文档-A.md / 领域模型重构设计文档-Leg.md
+   ├─ legacy/           旧「九州行旅图」架构归档（不参与构建）
+   ├─ scripts/          build-china-paths.mjs / shoot.mjs / zoom-map.mjs / verify-*.mjs
+   └─ shots/            v4-01 ~ v4-12 验收截图 + acceptance.json
 ```
 
 ---
@@ -139,7 +146,7 @@ shots/               v4-01 ~ v4-12 验收截图 + acceptance.json
 
 首页渲染、省份水墨下钻、新建攻略向导、示例攻略编辑器、交通方式切换、记账落账、今天视图、导出三件套、移动端首页、移动端编辑器与 bottom sheet、控制台检查。
 
-另有针对性验收脚本，当前全部通过：O 系列 9/9、Leg 5/5、回放 6/6、侧栏 10/10、卷首左轴 6/6、省视图与删除 9/9、城市地图 4/4、原生地图 5/5、图层篆印 7/7、跨设备同步 10/10（`node scripts/verify-sync.mjs`，自带静态服务，验证导出→整体替换→两机一致→撤销）。截图与报告位于 `shots/v4-*.png` 和 `shots/acceptance.json`；`node scripts/zoom-map.mjs` 以 2 倍分辨率体检底图笔触，`node scripts/verify-route.mjs` 核对 Key 是否生效、交通段是否已换成真实路线（打印每段的距离 / 耗时 / 折线点数）。
+另有针对性验收脚本，当前全部通过：O 系列 9/9、Leg 5/5、回放 6/6、侧栏 10/10、卷首左轴 6/6、省视图与删除 9/9、城市地图 4/4、原生地图 5/5、图层篆印 7/7、跨设备同步 10/10（在 `project/` 下运行 `node scripts/verify-sync.mjs`，自带静态服务，验证导出→整体替换→两机一致→撤销）、地图 Key 优先级 5/5（`VITE_TMAP_KEY=BUILD_KEY npm run build` 后运行 `node scripts/verify-map-key.mjs`，验证残留旧 Key 被覆盖 / 手填 Key 优先 / 恢复默认；验收后需用正常 `npm run build` 复原产物）。截图与报告位于 `project/shots/v4-*.png` 和 `project/shots/acceptance.json`；`node scripts/zoom-map.mjs` 以 2 倍分辨率体检底图笔触，`node scripts/verify-route.mjs` 核对 Key 是否生效、交通段是否已换成真实路线（打印每段的距离 / 耗时 / 折线点数）。
 
 版面约定（对应「不能挡」）：桌面为左工作台 388px / 中地图 / 右 inspector 360px 三栏，抽屉打开时地图变窄而不是被覆盖；工具条独占一行压在布局里；移动端 bottom sheet 参与 flex，三档高度（peek 76px / half 45vh / full 92vh）默认收起，地图自动让位。
 
@@ -158,8 +165,9 @@ shots/               v4-01 ~ v4-12 验收截图 + acceptance.json
 访问注意：
 
 - 必须用**新 Key 所在域名**访问；本地开发仍可继续用 `.env` 的 Key（`npm run dev` 不受影响）。
+- **Key 优先级**：构建期 Secret 注入的 Key 是权威默认，会覆盖浏览器里没有「用户手填」标记的历史残留 Key（旧 Key 失效会让真实底图整片加载不出来、只剩水墨降级层，看起来像空白地图）。你在设置面板手填并保存的 Key 始终优先；若换 Key 后地图只剩水墨，进「设置 → 恢复默认」即可切回部署 Key。
 - 每次发布后，Service Worker 对 HTML 走 network-first，回访会立刻拿到新版本，不会因缓存停在旧界面。
-- 部署产物由 Actions 现场构建，`dist/` 本身被 `.gitignore` 忽略，不需要手动上传。
+- 部署产物由 Actions 现场构建，`project/dist/` 本身被 `.gitignore` 忽略，不需要手动上传。
 
 ---
 

@@ -1735,7 +1735,7 @@ function estimate(from: LngLat, to: LngLat, mode: TransportMode) {
         <tr><td>D100 / L05 同日多城停留</td><td><b>明确未做</b>：Leg 已落地（L01–L04），但 CityStay 未引入，一天仍只有一个主城，"上午 A 城玩、下午 B 城玩"不能精确表达</td><td>从"按 leg 把 day.poiIds 切成停留组"入手，风险最低</td></tr>
         <tr><td>D100 / L06 城际估算与迁移</td><td>城际时长/票价需手填或标「估」，<code>estimate.ts</code> 城际档未做；旧 divider 跨城不自动转 Leg</td><td>按 city center 距离 + 方式经验速度/票价补估算与迁移</td></tr>
         <tr><td>D101 AI 公网可用</td><td>AI 仅内网构建可用；公网 https 连明文内网端点被 mixed content 拦截，<b>无解，非配置问题</b></td><td>如需公网，改为服务端代理或 https 端点（超出当前自用边界）</td></tr>
-        <tr><td>O01–O13 体验优化</td><td><b>已完成</b>：O01–O13 随 v4.7–v4.8 逐条落地（跨城、出发时间、统一撤销、增量重建、显式段、建议记忆、口径、状态清理、导入保护、地图让位、路网可辨、记账图表、手柄）</td><td>见 <code>设计/体验优化设计文档.md</code> 与项目根同名文件</td></tr>
+        <tr><td>O01–O13 体验优化</td><td><b>已完成</b>：O01–O13 随 v4.7–v4.8 逐条落地（跨城、出发时间、统一撤销、增量重建、显式段、建议记忆、口径、状态清理、导入保护、地图让位、路网可辨、记账图表、手柄）</td><td>见同目录 <code>体验优化设计文档.md</code></td></tr>
       </tbody>
     </table>
   </div>
