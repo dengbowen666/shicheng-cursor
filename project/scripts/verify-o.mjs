@@ -164,7 +164,8 @@ await check('O09 导入冲突有确认层', async () => {
   if (!fc) return { ok: false, detail: '无文件选择器' }
   await fc.setFiles({ name: 'backup.json', mimeType: 'application/json', buffer: Buffer.from(backup) })
   await page.waitForTimeout(700)
-  const hasModal = await page.locator('text=备份中有同名攻略').count()
+  // 导入弹窗文案已更新为「导入攻略备份」（新增整体替换选项，始终弹出）
+  const hasModal = await page.locator('text=导入攻略备份').count()
   const after = (await readTrips()).length
   return { ok: hasModal > 0 && before === after, detail: `冲突层=${hasModal} trips ${before}->${after}` }
 })

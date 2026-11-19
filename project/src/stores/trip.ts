@@ -17,9 +17,9 @@ export interface UndoEntry {
   at: number
 }
 
-/** O09：导入策略——同 ID 冲突时覆盖 / 跳过 / 另存为副本 */
-export type ImportPolicy = 'overwrite' | 'skip' | 'clone'
-export interface ImportResult { ok: boolean; message: string; conflicts: string[]; added: number; skipped: number }
+/** O09：导入策略——同 ID 冲突时覆盖 / 跳过 / 另存为副本；replace=整体替换本机（跨设备同步） */
+export type ImportPolicy = 'overwrite' | 'skip' | 'clone' | 'replace'
+export interface ImportResult { ok: boolean; message: string; conflicts: string[]; added: number; skipped: number; total?: number }
 
 function uid(prefix: string) {
   return `${prefix}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`
@@ -83,6 +83,14 @@ export const useTripStore = defineStore('trip', () => {
   const sortedTrips = computed(() => [...trips.value].sort((a, b) => b.updatedAt - a.updatedAt))
   const activeTrips = computed(() => sortedTrips.value.filter(t => !t.archived))
   const archivedTrips = computed(() => sortedTrips.value.filter(t => t.archived))
+
+  // 首次加载（含自动生成的演示攻略）主动落盘一次：watch 初始不触发，
+  // 否则全新用户什么都没做就关页时 localStorage 始终为空，数据等于没持久化。
+  try {
+    if (!localStorage.getItem(STORAGE)) {
+      localStorage.setItem(STORAGE, JSON.stringify({ schema: SCHEMA, trips: trips.value }))
+    }
+  } catch { /* 存储不可用时不影响启动 */ }
 
   watch(trips, value => {
     try {
@@ -170,9 +178,22 @@ export const useTripStore = defineStore('trip', () => {
     if (batchDepth > 0) return
     pushSnapshot(tripId, label)
   }
+  /** 全量快照：把整个 trips 数组压成一个可撤销条目，供整体替换/清空等跨卷操作使用 */
+  const ALL_SNAPSHOT_ID = '__all_trips__'
+  function snapshotAll(label: string) {
+    undoStack.value.push({ label, snapshot: JSON.stringify(trips.value), tripId: ALL_SNAPSHOT_ID, at: Date.now() })
+    if (undoStack.value.length > 12) undoStack.value.shift()
+  }
   function undo(): string | null {
     const entry = undoStack.value.pop()
     if (!entry) return null
+    if (entry.tripId === ALL_SNAPSHOT_ID) {
+      // 跨卷操作：整卷恢复（含 activeTripId），否则整体替换/清空无法一次撤销
+      const restored = (JSON.parse(entry.snapshot) as any[]).map(normalizeTrip)
+      trips.value = restored
+      if (!activeTripId.value || !findTrip(activeTripId.value)) activeTripId.value = restored[0]?.id || null
+      return `已撤销：${entry.label}`
+    }
     const restored = normalizeTrip(JSON.parse(entry.snapshot))
     const idx = trips.value.findIndex(t => t.id === entry.tripId)
     if (idx < 0) {
@@ -704,7 +725,7 @@ export const useTripStore = defineStore('trip', () => {
       if (!incoming.length) return { ok: false, message: '文件中没有攻略数据', conflicts: [], added: 0, skipped: 0 }
       const known = new Set(trips.value.map(t => t.id))
       const conflicts = incoming.filter(t => t && known.has(t.id)).map(t => t.title || '未命名旅程')
-      return { ok: true, message: `可读入 ${incoming.length} 份攻略`, conflicts, added: 0, skipped: 0 }
+      return { ok: true, message: `备份含 ${incoming.length} 份攻略，本机现有 ${trips.value.length} 份`, conflicts, added: 0, skipped: 0, total: incoming.length }
     } catch {
       return { ok: false, message: 'JSON 格式不正确', conflicts: [], added: 0, skipped: 0 }
     }
@@ -715,6 +736,14 @@ export const useTripStore = defineStore('trip', () => {
       const parsed = JSON.parse(json)
       const incoming: Trip[] = Array.isArray(parsed?.trips) ? parsed.trips : Array.isArray(parsed) ? parsed : []
       if (!incoming.length) return { ok: false, message: '文件中没有攻略数据', conflicts: [], added: 0, skipped: 0 }
+      // 整体替换：本机数据完全以备份为准（跨设备同步的正确语义），一次可撤销
+      if (policy === 'replace') {
+        snapshotAll('整体替换前状态')
+        const list = incoming.filter(Boolean).map(normalizeTrip)
+        trips.value = list
+        activeTripId.value = list.find(t => !t.archived)?.id || list[0]?.id || null
+        return { ok: true, message: `已同步：本机现有 ${list.length} 份攻略，与备份完全一致`, conflicts: [], added: list.length, skipped: 0, total: list.length }
+      }
       snapshot(activeTripId.value || incoming[0]?.id || '', '导入前状态')
       let added = 0, skipped = 0
       for (const item of incoming) {
@@ -737,13 +766,13 @@ export const useTripStore = defineStore('trip', () => {
       }
       if (!activeTripId.value || !findTrip(activeTripId.value)) activeTripId.value = trips.value[0]?.id || null
       const tail = skipped ? `，跳过 ${skipped} 份` : ''
-      return { ok: true, message: `已导入 ${added} 份攻略${tail}`, conflicts: [], added, skipped }
+      return { ok: true, message: `已导入 ${added} 份攻略${tail}（合并模式，本机其他攻略保留）`, conflicts: [], added, skipped, total: incoming.length }
     } catch {
       return { ok: false, message: 'JSON 格式不正确', conflicts: [], added: 0, skipped: 0 }
     }
   }
   function clearAll() {
-    snapshot(activeTripId.value || '', '清空数据')
+    snapshotAll('清空数据')
     trips.value = []
     activeTripId.value = null
   }

@@ -19,6 +19,7 @@ const fileInput = ref<HTMLInputElement | null>(null)
 const pendingJson = ref('')
 const importConflicts = ref<string[]>([])
 const importTotal = ref(0)
+const importLocalCount = ref(0)
 
 watch(() => ui.mapKey, v => { draftKey.value = v })
 
@@ -51,14 +52,11 @@ async function restore(e: Event) {
     const text = await file.text()
     const pre = trip.inspectImport(text)
     if (!pre.ok) { ui.toast(pre.message); return }
-    importTotal.value = pre.conflicts.length
-    if (pre.conflicts.length) {
-      pendingJson.value = text
-      importConflicts.value = pre.conflicts
-      return
-    }
-    const res = trip.importData(text)
-    ui.toast(res.message)
+    // 始终弹方式选择：换设备时必须能选「整体替换」，否则 demo 残留、数据不一致
+    importTotal.value = pre.total ?? pre.conflicts.length
+    importLocalCount.value = trip.trips.length
+    pendingJson.value = text
+    importConflicts.value = pre.conflicts
   } catch {
     ui.toast('文件读取失败')
   } finally {
@@ -69,7 +67,11 @@ async function restore(e: Event) {
 function resolveImport(policy: ImportPolicy) {
   if (!pendingJson.value) return
   const res = trip.importData(pendingJson.value, policy)
-  ui.toast(res.message)
+  if (res.ok && (policy === 'replace' || policy === 'overwrite')) {
+    ui.toast(res.message, '撤销', () => { const m = trip.undo(); if (m) ui.toast(m) })
+  } else {
+    ui.toast(res.message)
+  }
   pendingJson.value = ''
   importConflicts.value = []
 }
@@ -246,9 +248,9 @@ async function testAi() {
       </p>
 
       <ImportConfirmModal
-        v-if="importConflicts.length"
-        :conflicts="importConflicts" :total="importTotal"
-        @choose="resolveImport" @cancel="importConflicts = []; pendingJson = ''"
+        v-if="pendingJson"
+        :conflicts="importConflicts" :total="importTotal" :local-count="importLocalCount"
+        @choose="resolveImport" @cancel="pendingJson = ''; importConflicts = []"
       />
     </div>
   </div>
